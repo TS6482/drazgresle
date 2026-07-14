@@ -1,0 +1,20 @@
+{
+  "name": "Dražgrešle",
+  "short_name": "Dražgrešle",
+  "description": "Private household finance tracker for spending, net worth, and planning.",
+  "lang": "en",
+  "start_url": "/drazgresle/",
+  "scope": "/drazgresle/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f6f8",
+  "theme_color": "#2f6f4f",
+  "icons": [
+    {
+      "src": "/drazgresle/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

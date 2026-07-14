@@ -1,0 +1,86 @@
+/* Design tokens + a tiny base reset. Phone-first: sizes are chosen to read well at
+   ~390px wide and simply stretch on desktop (content is width-capped elsewhere). */
+
+:root {
+  color-scheme: light dark;
+
+  /* Colours — light */
+  --color-bg: #f4f6f8;
+  --color-surface: #ffffff;
+  --color-surface-alt: #eef1f4;
+  --color-text: #1b1f24;
+  --color-text-muted: #5c6673;
+  --color-border: #d9dee4;
+  --color-primary: #2f6f4f;
+  --color-primary-strong: #245740;
+  --color-on-primary: #ffffff;
+  --color-danger: #b3261e;
+  --color-warning-bg: #fff3df;
+  --color-warning-border: #f0c67a;
+  --color-warning-text: #6b4a05;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --radius: 10px;
+
+  /* Type */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --text-sm: 0.85rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.6rem;
+
+  /* Layout */
+  --header-height: 56px;
+  --content-max: 560px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #14171a;
+    --color-surface: #1e2226;
+    --color-surface-alt: #262b31;
+    --color-text: #e7ebef;
+    --color-text-muted: #9aa4af;
+    --color-border: #333a41;
+    --color-primary: #4f9e76;
+    --color-primary-strong: #3f8863;
+    --color-on-primary: #08130d;
+    --color-danger: #f2887f;
+    --color-warning-bg: #3a2f17;
+    --color-warning-border: #6b551f;
+    --color-warning-text: #f0d69a;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-text-size-adjust: 100%;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+}

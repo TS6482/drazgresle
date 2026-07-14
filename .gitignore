@@ -1,0 +1,13 @@
+# Never commit financial data or secrets (see docs/ARCHITECTURE.md §8)
+*.csv
+samples/
+.env
+.env.*
+
+# Build & deps
+node_modules/
+dist/
+
+# OS / editor
+.DS_Store
+Thumbs.db
