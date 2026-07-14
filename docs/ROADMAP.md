@@ -5,19 +5,22 @@ Statuses: `[ ]` todo · `[~]` in progress · `[x]` done.
 
 ## Phase 0 — Foundations (repos, scaffold, data plumbing)
 
-- [ ] Create GitHub repos: `financial-planner` (public) + `financial-planner-data` (private);
-      add husband as collaborator on the data repo. **Needs user action** (or `gh` CLI, which
-      is not installed yet).
-- [ ] Seed data repo with empty schema files (§4 of ARCHITECTURE.md).
+- [x] Create GitHub repos: `TS6482/drazgresle` (public) + `TS6482/drazgresle-data` (private,
+      verified). Pages enabled (workflow build); first deploy green; site live at
+      <https://ts6482.github.io/drazgresle/>. *Husband's collaborator invite still pending
+      (deferred by user).*
+- [x] Seed data repo with empty schema files + 12 starter categories.
 - [x] Scaffold Vite + React + TS (strict) app; Vitest; ESLint; `.gitignore` incl. `*.csv`;
       PWA manifest + icon (SVG only for now — PNG 192/512 parked in Backlog); phone-first base
       layout/design tokens. *(Opus, 2026-07-14; reviewed by Fable: tsc clean, 5/5 tests, build OK)*
 - [x] GitHub Actions: build + deploy to Pages on push to `main`.
 - [x] Token entry screen; validate token; store in sessionStorage.
 - [x] `api/github.ts`: read/write JSON files with sha-based retry (§4 of ARCHITECTURE.md).
-- [ ] **Milestone check:** both users can open the Pages URL on their phones, install to home
+- [~] **Milestone check:** both users can open the Pages URL on their phones, install to home
       screen, enter their token, and see a value round-tripped to the data repo (visible as a
-      commit).
+      commit). *(Site deployed and reachable; waiting on user's first token test; husband
+      deferred. Note: write round-trip UI arrives with Phase 1 — token validation covers
+      read access for now.)*
 
 ## Phase 1 — Net worth tracking
 
