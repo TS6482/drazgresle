@@ -1,0 +1,243 @@
+.screen,
+.formScreen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+
+.addButton {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border: 1px solid var(--color-primary);
+  cursor: pointer;
+}
+
+.muted {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+/* --- Chart: theme-aware series colours (validated palette, slots 1–6) --- */
+.chart {
+  --series-bank: #2a78d6;
+  --series-investments: #1baf7a;
+  --series-pensions: #eda100;
+  --series-property: #008300;
+  --series-other: #4a3aa7;
+  --series-liabilities: #e34948;
+
+  --chart-surface: var(--color-surface);
+  --chart-grid: #e1e0d9;
+  --chart-axis: #898781;
+  --chart-baseline: #c3c2b7;
+  --chart-net: var(--color-text);
+
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-2) var(--space-2);
+}
+
+@media (prefers-color-scheme: dark) {
+  .chart {
+    --series-bank: #3987e5;
+    --series-investments: #199e70;
+    --series-pensions: #c98500;
+    --series-property: #008300;
+    --series-other: #9085e9;
+    --series-liabilities: #e66767;
+
+    --chart-grid: #2c2c2a;
+    --chart-baseline: #383835;
+  }
+}
+
+.legend {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0 var(--space-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.legendSwatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.legendLine {
+  width: 14px;
+  height: 2px;
+  display: inline-block;
+}
+
+/* --- Tooltip --- */
+.tooltip {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  min-width: 160px;
+}
+
+.tooltipDate {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.tooltipNet {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tooltipSub {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.tooltipList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.tooltipRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.tooltipValue {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.tooltipKeyWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.tooltipStroke {
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.tooltipName {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* --- Live preview bar in the form --- */
+.previewBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius);
+}
+
+.previewLabel {
+  color: var(--color-text-muted);
+}
+
+.previewValue {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- History list --- */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.groupHeading {
+  margin: 0;
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.historyRow {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-text);
+}
+
+.historyText {
+  display: flex;
+  flex-direction: column;
+}
+
+.historyDate {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.historyNote {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.historyNet {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

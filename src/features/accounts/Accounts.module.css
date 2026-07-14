@@ -1,0 +1,127 @@
+.screen,
+.formScreen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+
+.addButton {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border: 1px solid var(--color-primary);
+  cursor: pointer;
+}
+
+.muted {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.groupHeading {
+  margin: 0;
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.accountRow {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-text);
+}
+
+.inactiveRow {
+  opacity: 0.6;
+}
+
+.accountText {
+  display: flex;
+  flex-direction: column;
+}
+
+.accountName {
+  font-weight: 600;
+}
+
+.accountType {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.accountBalance {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  margin: 0;
+}
+
+.legend {
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.planRow {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  align-items: center;
+}
+
+.rowRemove {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-danger);
+  font-size: var(--text-lg);
+  cursor: pointer;
+}

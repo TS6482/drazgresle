@@ -24,15 +24,20 @@ Statuses: `[ ]` todo · `[~]` in progress · `[x]` done.
 
 ## Phase 1 — Net worth tracking
 
-- [ ] Accounts management UI — all types incl. property, pension products, other assets;
+- [x] Accounts management UI — all types incl. property, pension products, other assets;
       mortgage account with loan params (rate, payment, fixation end); family-loan account
       with outstanding balance, payment month, and editable year → amount repayment plan
       (ARCHITECTURE.md §4a).
-- [ ] `engine/loan.ts`: amortization schedule + tests.
-- [ ] Quarterly snapshot entry: pre-filled from last snapshot + computed mortgage balance.
-- [ ] Net worth over time chart (total + asset-class breakdown). Use `dataviz` skill.
-- [ ] Interim home screen: current net worth + snapshot prompt (replaced in Phase 2 by the
+- [x] `engine/loan.ts`: amortization schedule + tests.
+- [x] Quarterly snapshot entry: pre-filled from last snapshot + computed mortgage balance
+      (editable); snapshot history editable/deletable; >92-day nudge on home.
+- [x] Net worth over time chart (net line + stacked asset classes above zero, liabilities band
+      below zero; dataviz palette validated light+dark). Recharts added (~554 kB bundle —
+      code-splitting parked in Backlog).
+- [x] Interim home screen: current net worth + snapshot prompt (replaced in Phase 2 by the
       "this month's money" home).
+      *(All Phase 1: Opus implemented 2026-07-14; Fable review fixed 2 lint findings via agent;
+      37/37 tests, tsc+eslint clean. Awaiting user's on-phone verification pass.)*
 
 ## Phase 2 — Income & expenses (CSV import, classification, budgets, cash)
 
@@ -97,6 +102,10 @@ import.
   phone-first PWA; home = "this month's money"; quarterly snapshots; ~10 coarse categories;
   annual bonus as % of salary in projections; 10–15y horizon; start fresh (no import);
   vendor-rule learning from corrections (future-only by default).
+- 2026-07-14 — Phase 1 design: chart = total + stacked asset classes (per-account detail on
+  tap); snapshot nudge on home after ~3 months, past snapshots editable; amounts displayed as
+  Czech format "1 234 567 Kč" (whole crowns except transaction detail). Liability balances are
+  entered/stored as positive "amount owed"; the engine subtracts by account type.
 - 2026-07-14 — Family loan added (owed to husband's father): interest-free, known outstanding
   balance counted as a net-worth liability, one lump-sum payment per year in a fixed month
   (calendar reminder), amount freely editable per year via a year → amount plan table that
