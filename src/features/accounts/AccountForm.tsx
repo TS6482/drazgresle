@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Account, AccountOwner, AccountType, FamilyLoan, MortgageLoan } from '../../types/data';
 import { parseKcInput } from '../../engine/money';
+import { parsePercentInput } from '../../engine/percent';
 import { useDataStore } from '../../store/data';
 import { todayIso } from '../../utils/dates';
 import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ORDER } from '../shared/labels';
@@ -68,15 +69,17 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
   );
   const [planRows, setPlanRows] = useState<PlanRow[]>(planToRows(account?.familyLoan?.plan));
 
-  const rateValid = annualRatePct.trim() !== '' && Number.isFinite(Number(annualRatePct)) &&
-    Number(annualRatePct) >= 0;
+  const rateValid = parsePercentInput(annualRatePct) !== null;
 
   function updatePlanRow(index: number, patch: Partial<PlanRow>) {
     setPlanRows((rows) => rows.map((r, i) => (i === index ? { ...r, ...patch } : r)));
   }
 
   function addPlanRow() {
-    const lastYear = planRows.length > 0 ? Number(planRows[planRows.length - 1].year) : new Date().getFullYear();
+    // With a free-text year field the last row may hold junk — fall back to
+    // the current year rather than suggesting "NaN".
+    const last = planRows.length > 0 ? Number(planRows[planRows.length - 1].year) : NaN;
+    const lastYear = Number.isFinite(last) ? last : new Date().getFullYear();
     setPlanRows((rows) => [...rows, { year: String(lastYear + 1), amount: '' }]);
   }
 
@@ -120,7 +123,7 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
       const loan: MortgageLoan = {
         principalHalere: parseKcInput(principal) ?? 0,
         principalAsOf,
-        annualRatePct: Number(annualRatePct),
+        annualRatePct: parsePercentInput(annualRatePct) ?? 0,
         monthlyPaymentHalere: parseKcInput(monthlyPayment) ?? 0,
         fixationEnd,
       };
@@ -129,8 +132,11 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
       const plan: Record<string, number> = {};
       for (const row of planRows) {
         const halere = parseKcInput(row.amount);
-        if (row.year.trim() !== '' && halere !== null) {
-          plan[row.year.trim()] = halere;
+        const year = row.year.trim();
+        // Year is free text now (no type="number") — only a 4-digit year may
+        // become a plan key.
+        if (/^\d{4}$/.test(year) && halere !== null) {
+          plan[year] = halere;
         }
       }
       const familyLoan: FamilyLoan = {
@@ -240,14 +246,19 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
             <input
               id="mort-rate"
               className={forms.input}
-              type="number"
+              type="text"
               inputMode="decimal"
-              step="0.01"
-              min="0"
+              autoComplete="off"
               value={annualRatePct}
               onChange={(e) => setAnnualRatePct(e.target.value)}
-              placeholder="e.g. 4.9"
+              aria-invalid={!rateValid}
+              placeholder="e.g. 4,9"
             />
+            {!rateValid && (
+              <span className={forms.error} role="alert">
+                Enter a rate like 4,9 or 4.9
+              </span>
+            )}
           </div>
           <MoneyInput
             id="mort-payment"
@@ -316,8 +327,9 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
             <div className={styles.planRow} key={index}>
               <input
                 className={forms.input}
-                type="number"
+                type="text"
                 inputMode="numeric"
+                autoComplete="off"
                 aria-label="Year"
                 value={row.year}
                 onChange={(e) => updatePlanRow(index, { year: e.target.value })}

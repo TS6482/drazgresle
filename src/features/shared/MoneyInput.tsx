@@ -35,7 +35,7 @@ export function MoneyInput({ id, label, value, onChange, hint, allowEmpty }: Mon
           id={id}
           className={styles.input}
           type="text"
-          inputMode="numeric"
+          inputMode="decimal"
           autoComplete="off"
           value={value}
           onChange={(e) => onChange(e.target.value)}

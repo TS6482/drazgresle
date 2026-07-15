@@ -44,6 +44,10 @@ The user is an **amateur with little coding experience**. Consequences:
 - All money in CZK, stored as **integer halere** (hundredths) to avoid float errors. UI English.
 - **Phone-first**: every screen is designed for a phone viewport first (the app ships as an
   installable PWA); desktop is the adaptation, not the other way around.
+- **Numeric inputs — never `type="number"`** (user-reported bug, 2026-07-15): Czech phone
+  keyboards emit a decimal COMMA, which `type="number"` rejects. Every numeric field is
+  `type="text"` with `inputMode="decimal"` (or `"numeric"` for true integers), parsed by a
+  tested engine helper accepting both comma and dot (`parseKcInput`, `parsePercentInput`).
 - Business logic (tax, projections, CSV parsing, classification rules) lives in pure TypeScript
   modules under `src/engine/` with **Vitest unit tests — required** for every engine change.
   UI components stay thin.
