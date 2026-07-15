@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import type { Category } from '../../types/data';
 import type { MonthSummary } from '../../engine/summarize';
 import { spendingByArea } from '../../engine/areas';
@@ -24,16 +25,18 @@ function areaVar(areaId: string): string {
   return AREA_VAR[areaId] ?? '--area-others';
 }
 
+/** Sentinel key for the unfilled remainder slice of the arc. */
+const REMAINDER_KEY = '__remainder';
+
 /**
- * A horizontal "barometer": the bar's full width is the month's INCOME, filled
- * left-to-right with a coloured segment per spending area (in SPENDING_AREAS
- * order). The unfilled remainder is what's left. A prominent "Left" figure sits
- * above it (income − spent), red when negative. Hovering/tapping a segment (or
- * its legend entry) shows that area's amount and share of income beside the bar.
+ * An arched "barometer" (half-donut gauge): the whole arc represents the month's
+ * INCOME, filled left-to-right with a coloured segment per spending area (in
+ * SPENDING_AREAS order); the remaining arc is the empty track. The amount left
+ * (income − spent) sits under the arch, red when negative. Hovering/tapping a
+ * segment (or its legend entry) shows that area's amount and share of income.
  *
- * Edge cases: no income → a muted line (nothing to measure against); overspent →
- * the segments scale to fill the whole bar (reads as 100% full), "Left" shows
- * negative, and an "Over by" note appears. A segment never overflows the bar.
+ * Edge cases: no income → a muted line; overspent → segments fill the whole arc
+ * (reads as full), "Left" shows negative, and an "Over by" note appears.
  */
 export function MonthMeter({ summary, categories }: MonthMeterProps) {
   const byId = useMemo(
@@ -63,52 +66,69 @@ export function MonthMeter({ summary, categories }: MonthMeterProps) {
   // Segments to draw (areas with real spend), in fixed area order.
   const drawn = areas.filter((a) => a.spendHalere > 0);
   const overspent = spent > income;
-  // Overspending fills the whole bar: divide by total spend so segments sum to
-  // 100%. Otherwise divide by income so the fill is the share actually spent.
-  const denom = overspent ? spent : income;
-  // The empty track at the end — none when overspent (bar is full).
+  // When overspent the arc is entirely spending (no empty track); otherwise the
+  // remainder fills the rest of the arc up to income.
   const remainder = overspent ? 0 : Math.max(0, income - spent);
+
+  // Half-donut slices: the area segments plus the empty remainder as a track
+  // slice. Recharts sums the values, so the arc spans income (or spent when
+  // overspent) across the semicircle.
+  const data = [
+    ...drawn.map((a) => ({ key: a.areaId, value: a.spendHalere })),
+    ...(remainder > 0 ? [{ key: REMAINDER_KEY, value: remainder }] : []),
+  ];
 
   const active = drawn.find((a) => a.areaId === activeId) ?? null;
 
+  function selectAt(index: number) {
+    const slice = data[index];
+    setActiveId(slice && slice.key !== REMAINDER_KEY ? slice.key : null);
+  }
+
   return (
     <div className={styles.meter}>
-      <div className={styles.leftBox}>
-        <span className={styles.leftLabel}>Left</span>
-        <span className={`${styles.leftValue} ${leftover < 0 ? styles.negative : ''}`}>
-          {formatKc(leftover)}
-        </span>
+      <div className={styles.gauge}>
+        <ResponsiveContainer width="100%" height={132}>
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="key"
+              cx="50%"
+              cy="100%"
+              startAngle={180}
+              endAngle={0}
+              innerRadius={76}
+              outerRadius={112}
+              stroke="var(--color-surface)"
+              strokeWidth={2}
+              isAnimationActive={false}
+              onMouseEnter={(_, index) => selectAt(index)}
+              onMouseLeave={() => setActiveId(null)}
+              onClick={(_, index) => selectAt(index)}
+            >
+              {data.map((slice) => (
+                <Cell
+                  key={slice.key}
+                  fill={
+                    slice.key === REMAINDER_KEY
+                      ? 'var(--color-surface-alt)'
+                      : `var(${areaVar(slice.key)})`
+                  }
+                />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        <div className={styles.center}>
+          <span className={styles.leftLabel}>Left</span>
+          <span className={`${styles.leftValue} ${leftover < 0 ? styles.negative : ''}`}>
+            {formatKc(leftover)}
+          </span>
+        </div>
       </div>
 
-      <div className={styles.track}>
-        {drawn.map((a) => (
-          <button
-            key={a.areaId}
-            type="button"
-            className={styles.segment}
-            style={{ flexGrow: a.spendHalere / denom, background: `var(${areaVar(a.areaId)})` }}
-            aria-label={`${a.name}: ${formatKc(a.spendHalere)}, ${formatPercent(
-              (a.spendHalere / income) * 100,
-            )} of income`}
-            onMouseEnter={() => setActiveId(a.areaId)}
-            onMouseLeave={() => setActiveId(null)}
-            onFocus={() => setActiveId(a.areaId)}
-            onBlur={() => setActiveId(null)}
-            onClick={() => setActiveId(a.areaId)}
-          />
-        ))}
-        {remainder > 0 && (
-          <div
-            className={styles.remainder}
-            style={{ flexGrow: remainder / denom }}
-            aria-hidden="true"
-          />
-        )}
-      </div>
-
-      {overspent && (
-        <p className={styles.overNote}>Over by {formatKc(spent - income)}</p>
-      )}
+      {overspent && <p className={styles.overNote}>Over by {formatKc(spent - income)}</p>}
 
       <div className={styles.detail}>
         {active ? (

@@ -1,6 +1,6 @@
-/* Spending "barometer": a horizontal bar whose full width is the month's income,
-   filled with a segment per spending area. Area colours are theme-aware (light +
-   dark), echoing the validated palette used across the app. */
+/* Spending "barometer": an arched half-donut gauge whose full arc is the month's
+   income, filled with a segment per spending area. Area colours are theme-aware
+   (light + dark), echoing the validated palette used across the app. */
 .meter {
   --area-essential: #2a78d6;
   --area-food: #1baf7a;
@@ -24,12 +24,24 @@
   }
 }
 
-/* Prominent "Left" figure, centred above the bar. */
-.leftBox {
+/* The arched gauge. The half-donut sits in the top of this box (its centre is at
+   the bottom edge); the "Left" figure is overlaid under the arch. */
+.gauge {
+  position: relative;
+  width: 100%;
+}
+
+/* "Left" figure, centred under the arch (near the bottom of the gauge box).
+   pointer-events:none so it never blocks the arc's hover/tap. */
+.center {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  justify-content: flex-end;
+  padding-bottom: var(--space-1);
+  pointer-events: none;
 }
 
 .leftLabel {
@@ -44,48 +56,9 @@
   color: var(--color-text);
 }
 
-/* Negative "Left" (overspent or over-saved) reads as a warning. */
+/* Negative "Left" (overspent) reads as a warning. */
 .negative {
   color: var(--color-danger);
-}
-
-/* The bar itself. Container background shows through the 2px gaps between
-   segments as a thin surface-coloured separator; overflow-hidden + radius give
-   rounded ends. */
-.track {
-  display: flex;
-  gap: 2px;
-  width: 100%;
-  min-height: 44px;
-  background: var(--color-surface);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-/* One area's fill. A button so it carries the hover/tap; reset to a bare block.
-   flex-basis 0 makes width purely proportional to flex-grow (the area's share). */
-.segment {
-  flex-basis: 0;
-  min-width: 0;
-  height: auto;
-  align-self: stretch;
-  padding: 0;
-  border: none;
-  cursor: pointer;
-  appearance: none;
-}
-
-.segment:focus-visible {
-  outline: 2px solid var(--color-text);
-  outline-offset: -3px;
-}
-
-/* The unfilled remainder (income − spent) — an empty track region. */
-.remainder {
-  flex-basis: 0;
-  min-width: 0;
-  align-self: stretch;
-  background: var(--color-surface-alt);
 }
 
 .overNote {
