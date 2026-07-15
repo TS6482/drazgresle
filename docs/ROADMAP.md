@@ -109,6 +109,25 @@ import.
 
 ## Decision log
 
+- 2026-07-15 — Per-month income-allocation **donut** in Month view (user request): slices
+  Spent / Saved / Left over as shares of income (income total in the centre), colours echoing
+  the net-worth chart. Edge cases (no income / overspent / savings withdrawn) show a
+  plain-language line instead of a broken pie. `engine/allocation.ts` pure + tested.
+  *(Written directly by Opus — session model switched to Opus mid-task after the delegated
+  agent hit a session limit; model policy satisfied since Opus is the implementation model.)*
+- 2026-07-15 — Savings are not spending (confirmed): month summary becomes
+  **Income / Spent / Saved / Left over** (spent = fixed+variable only; saved = net put into
+  savings-group categories, may go negative in a withdrawal month; leftover = income − spent −
+  saved). Savings stay budgetable but a savings budget is a **target to hit** (shown positively,
+  "✓ target reached"), never an over-budget problem. Month view splits budget-vs-actual into
+  Spending / Saving; Budgets screen labels the section "Saving targets"; Home's budget bar
+  tracks spending budgets only, with a compact "Saved X" line.
+
+- 2026-07-15 — Savings-group categories (Investments etc.) no longer count as spending: month
+  summary becomes **Income / Spent / Saved / Left over**; savings budgets are targets to hit
+  (met = positive signal, never "over budget"); budget list splits into Spending and Saving
+  sections. Confirmed with user after investments showed up inside Spent.
+
 - 2026-07-15 — REVERSED the lunch-money decision after real use: transfers between Air Bank
   and the RB lunch account are now plain **Transfer** (both directions — statements showed the
   flow is mostly INTO Air Bank, which was distorting Eating out via refund netting). A second

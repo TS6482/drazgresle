@@ -1,5 +1,6 @@
-// Monthly rollups: income vs spend, per-category net + budget-vs-actual. Pure —
-// no React, no I/O. All amounts are signed integer halere (negative = outflow).
+// Monthly rollups: income / spend / saved, per-category net + budget-vs-actual.
+// Pure — no React, no I/O. All amounts are signed integer halere (negative =
+// outflow).
 //
 // Confirmed rules (docs/ROADMAP.md decision log, 2026-07-15):
 // - Transfers between the household's own accounts (the reserved `'transfer'`
@@ -9,6 +10,10 @@
 //   is the *sum of signed amounts* in it, so a refund cancels part of the spend.
 // - Unclassified transactions (categoryId null) are excluded from income/spend
 //   and surfaced separately via `unclassifiedCount`.
+// - Savings-group categories are NOT spending (confirmed 2026-07-15): money
+//   moved to own investments stays visible and budgetable, but lands in the
+//   separate `savedHalere` bucket, and its budget is a target to HIT (a floor),
+//   not a ceiling — see `targetMet` vs `overBudget` on the rows.
 
 import type { Category, CategoryBudget, CategoryGroup, Transaction } from '../types/data';
 
@@ -18,16 +23,21 @@ export type BudgetMap = Record<string, CategoryBudget>;
 /** The reserved category id for transfers between own accounts. */
 export const TRANSFER_CATEGORY_ID = 'transfer';
 
-/** Expense groups whose spending counts toward budgets and the spend total. */
-const EXPENSE_GROUPS = new Set(['fixed', 'variable', 'savings']);
+/** Groups whose outflow is SPENDING (savings are counted separately). */
+const EXPENSE_GROUPS = new Set(['fixed', 'variable']);
 
 /**
- * True for groups whose spending is budgeted (fixed/variable/savings). The UI
- * uses this to keep income rows out of budget-vs-actual and top-spending lists
- * — they are already counted in the income total.
+ * True for groups whose outflow counts as spending (fixed/variable). The UI
+ * uses this for the spending budget list and top-spending — income rows are
+ * already counted in the income total, savings rows in the saved total.
  */
 export function isExpenseGroup(group: CategoryGroup | undefined): boolean {
   return group !== undefined && EXPENSE_GROUPS.has(group);
+}
+
+/** True for the savings group — outflow is money put away, not spent. */
+export function isSavingsGroup(group: CategoryGroup | undefined): boolean {
+  return group === 'savings';
 }
 
 /** `'YYYY-MM'` for an ISO date (or any string beginning with one). */
@@ -55,23 +65,6 @@ export function budgetFor(
   return entry.defaultMonthlyHalere ?? null;
 }
 
-/**
- * Sum of every category's budget for a month, or `null` when no category has a
- * budget set for it (drives the home screen's "no budgets yet" state).
- */
-export function totalBudgetForMonth(budgets: BudgetMap, month: string): number | null {
-  let total = 0;
-  let any = false;
-  for (const id of Object.keys(budgets)) {
-    const b = budgetFor(budgets, id, month);
-    if (b !== null) {
-      total += b;
-      any = true;
-    }
-  }
-  return any ? total : null;
-}
-
 /** True when a transaction's category is a transfer (by id or by group). */
 function isTransferCategory(categoryId: string, byId: Map<string, Category>): boolean {
   if (categoryId === TRANSFER_CATEGORY_ID) {
@@ -85,27 +78,37 @@ export interface CategorySummary {
   categoryId: string;
   /** The category's group, or undefined when the id is unknown (e.g. a
    *  transaction referencing a deleted-from-file category). Lets the UI filter
-   *  presentation (say, budget-vs-actual shows expense groups only) without
-   *  the engine dropping any data. */
+   *  presentation (spending vs saving sections) without the engine dropping
+   *  any data. */
   group?: CategoryGroup;
   /** Signed sum of amounts in the category (negative = net outflow). */
   netHalere: number;
-  /** Positive spend for expense categories; 0 for income/transfer categories. */
+  /** Positive net outflow for expense AND savings rows (for savings this is
+   *  the amount put away; a withdrawal month can go negative). 0 for
+   *  income/transfer/unknown rows. */
   spendHalere: number;
   /** Budget for the month, or null when none is set. */
   budgetHalere: number | null;
-  /** True when a budget is set and spend exceeds it. */
+  /** Expense rows only: budget set and spend exceeds it (a problem). Savings
+   *  rows are never marked over-budget — exceeding a savings target is good. */
   overBudget: boolean;
+  /** Savings rows only: budget (target) set and the amount put away reached
+   *  it. Absent on non-savings rows. */
+  targetMet?: boolean;
 }
 
 export interface MonthSummary {
   /** Sum of positive amounts in income-group categories. */
   incomeHalere: number;
-  /** Positive: the net outflow across expense-group categories (refunds net). */
+  /** Positive: net outflow across fixed+variable categories (refunds net). */
   spendHalere: number;
-  /** incomeHalere − spendHalere. */
-  netHalere: number;
-  /** Per-category rows, sorted by spend descending. */
+  /** Net amount put away into savings-group categories this month (negative
+   *  when more was withdrawn than deposited). */
+  savedHalere: number;
+  /** incomeHalere − spendHalere − savedHalere: what's neither spent nor put
+   *  away — the month's slack. */
+  leftoverHalere: number;
+  /** Per-category rows, sorted by outflow descending. */
   byCategory: CategorySummary[];
   /** How many transactions have no category yet. */
   unclassifiedCount: number;
@@ -114,9 +117,10 @@ export interface MonthSummary {
 }
 
 /**
- * Roll up a month's transactions into income/spend totals and a per-category
- * budget-vs-actual breakdown. `budgets` is the category-id → budget map and
- * `month` is the `'YYYY-MM'` key the overrides are looked up under.
+ * Roll up a month's transactions into income/spent/saved/leftover totals and a
+ * per-category budget-vs-actual breakdown. `budgets` is the category-id →
+ * budget map and `month` is the `'YYYY-MM'` key the overrides are looked up
+ * under.
  */
 export function summarizeMonth(
   transactions: Transaction[],
@@ -130,7 +134,7 @@ export function summarizeMonth(
   let unclassifiedCount = 0;
   let transferCount = 0;
 
-  // Signed sum per category id (only income + expense groups land here).
+  // Signed sum per category id (income + expense + savings groups land here).
   const netByCategory = new Map<string, number>();
 
   for (const tx of transactions) {
@@ -163,26 +167,35 @@ export function summarizeMonth(
   }
 
   let spendHalere = 0;
+  let savedHalere = 0;
   const byCategory: CategorySummary[] = [];
 
   for (const id of ids) {
     const group = byId.get(id)?.group;
     const net = netByCategory.get(id) ?? 0;
-    const isExpense = group !== undefined && EXPENSE_GROUPS.has(group);
-    // Spend is the net outflow (negated signed sum); refunds already netted in.
-    // `+ 0` normalises the negative zero that `-0` produces for a no-spend row.
-    const spend = isExpense ? -net + 0 : 0;
+    const isExpense = isExpenseGroup(group);
+    const isSavings = isSavingsGroup(group);
+    // Outflow is the negated signed sum; refunds already netted in. `+ 0`
+    // normalises the negative zero that `-0` produces for a no-activity row.
+    const outflow = isExpense || isSavings ? -net + 0 : 0;
     if (isExpense) {
-      spendHalere += spend;
+      spendHalere += outflow;
+    } else if (isSavings) {
+      savedHalere += outflow;
     }
     const budgetHalere = budgetFor(budgets, id, month);
     const row: CategorySummary = {
       categoryId: id,
       netHalere: net,
-      spendHalere: spend,
+      spendHalere: outflow,
       budgetHalere,
-      overBudget: budgetHalere !== null && spend > budgetHalere,
+      // A savings target is a floor, never a ceiling — only expense rows can
+      // be over budget.
+      overBudget: isExpense && budgetHalere !== null && outflow > budgetHalere,
     };
+    if (isSavings) {
+      row.targetMet = budgetHalere !== null && outflow >= budgetHalere;
+    }
     if (group !== undefined) {
       row.group = group;
     }
@@ -194,7 +207,8 @@ export function summarizeMonth(
   return {
     incomeHalere,
     spendHalere,
-    netHalere: incomeHalere - spendHalere,
+    savedHalere,
+    leftoverHalere: incomeHalere - spendHalere - savedHalere,
     byCategory,
     unclassifiedCount,
     transferCount,

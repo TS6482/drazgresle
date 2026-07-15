@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Category, CategoryBudget } from '../../types/data';
 import type { BudgetMap } from '../../engine/summarize';
 import { parseKcInput } from '../../engine/money';
-import { budgetFor, isExpenseGroup } from '../../engine/summarize';
+import { budgetFor, isExpenseGroup, isSavingsGroup } from '../../engine/summarize';
 import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
 import { formatMonthLabel, shiftMonth } from '../../utils/dates';
@@ -11,9 +11,14 @@ import { MoneyInput } from '../shared/MoneyInput';
 import forms from '../shared/forms.module.css';
 import styles from './Budgets.module.css';
 
-/** Budgets apply to active expense categories only (never income/transfer). */
+/** Budgets apply to active expense AND savings categories (never income /
+ *  transfer). A savings budget is a target to HIT, not a spending ceiling —
+ *  the month view presents them under "Saving". */
 function isBudgetable(category: Category): boolean {
-  return category.active !== false && isExpenseGroup(category.group);
+  return (
+    category.active !== false &&
+    (isExpenseGroup(category.group) || isSavingsGroup(category.group))
+  );
 }
 
 function halereToString(halere: number | undefined): string {
@@ -50,6 +55,9 @@ export function Budgets() {
           (order.get(a.group) ?? 99) - (order.get(b.group) ?? 99) || a.name.localeCompare(b.name),
       );
   }, [categories]);
+
+  const spendingCats = budgetable.filter((c) => isExpenseGroup(c.group));
+  const savingCats = budgetable.filter((c) => isSavingsGroup(c.group));
 
   const [defaults, setDefaults] = useState<Record<string, string>>(
     () => buildSeed(budgetable, budgets, viewedMonth).defaults,
@@ -140,17 +148,49 @@ export function Budgets() {
 
       {budgetable.length === 0 && (
         <p className={styles.muted}>
-          No expense categories yet. Add some in Settings first.
+          No expense or savings categories yet. Add some in Settings first.
         </p>
       )}
 
-      <ul className={styles.list}>
-        {budgetable.map((cat) => {
-          const isExpanded = expanded[cat.id] ?? false;
-          const effective = budgetFor(budgets, cat.id, viewedMonth);
-          const hasOverride = budgets[cat.id]?.overrides?.[viewedMonth] !== undefined;
-          return (
-            <li key={cat.id} className={styles.row}>
+      {spendingCats.length > 0 && (
+        <>
+          <h2 className={styles.sectionHeading}>Spending</h2>
+          <ul className={styles.list}>{spendingCats.map(renderCategoryRow)}</ul>
+        </>
+      )}
+
+      {savingCats.length > 0 && (
+        <>
+          <h2 className={styles.sectionHeading}>Saving targets</h2>
+          <p className={styles.muted}>
+            Targets to hit, not ceilings — the month view cheers when you reach them.
+          </p>
+          <ul className={styles.list}>{savingCats.map(renderCategoryRow)}</ul>
+        </>
+      )}
+
+      <div className={forms.actions}>
+        <button
+          type="button"
+          className={forms.primary}
+          onClick={() => void handleSave()}
+          disabled={saving || budgetable.length === 0}
+        >
+          {saving ? 'Saving…' : 'Save budgets'}
+        </button>
+        <button type="button" className={forms.secondary} onClick={() => navigate('/month')}>
+          Cancel
+        </button>
+      </div>
+    </section>
+  );
+
+  function renderCategoryRow(cat: Category) {
+    const isExpanded = expanded[cat.id] ?? false;
+    const effective = budgetFor(budgets, cat.id, viewedMonth);
+    const hasOverride = budgets[cat.id]?.overrides?.[viewedMonth] !== undefined;
+    return (
+      <li key={cat.id} className={styles.row}>
               <div className={styles.rowTop}>
                 <span className={styles.rowText}>
                   <span className={styles.name}>{cat.name}</span>
@@ -201,24 +241,7 @@ export function Budgets() {
                   </button>
                 </div>
               )}
-            </li>
-          );
-        })}
-      </ul>
-
-      <div className={forms.actions}>
-        <button
-          type="button"
-          className={forms.primary}
-          onClick={() => void handleSave()}
-          disabled={saving || budgetable.length === 0}
-        >
-          {saving ? 'Saving…' : 'Save budgets'}
-        </button>
-        <button type="button" className={forms.secondary} onClick={() => navigate('/month')}>
-          Cancel
-        </button>
-      </div>
-    </section>
-  );
+      </li>
+    );
+  }
 }

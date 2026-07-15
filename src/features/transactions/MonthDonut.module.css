@@ -1,0 +1,105 @@
+/* Income-allocation donut. Slice colours echo the net-worth chart's validated
+   palette (theme-aware, light + dark) so the whole app shares one system:
+   spent = pensions yellow, saved = investments aqua, left over = bank blue. */
+.donut {
+  --slice-spent: #eda100;
+  --slice-saved: #1baf7a;
+  --slice-leftover: #2a78d6;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .donut {
+    --slice-spent: #c98500;
+    --slice-saved: #199e70;
+    --slice-leftover: #3987e5;
+  }
+}
+
+.ringWrap {
+  position: relative;
+  width: 100%;
+  max-width: 260px;
+}
+
+/* Income total centred in the hole. pointer-events:none so it never blocks the
+   chart; the ring carries no interaction anyway. */
+.center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.centerValue {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.centerLabel {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.legendSwatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.legendName {
+  color: var(--color-text);
+}
+
+/* Amount takes the slack; percent sits hard right. Tabular figures keep the
+   two numeric columns aligned across rows. */
+.legendAmount {
+  margin-left: auto;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.legendPct {
+  min-width: 56px;
+  text-align: right;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.note {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}

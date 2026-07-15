@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   budgetFor,
   isExpenseGroup,
+  isSavingsGroup,
   monthKey,
   summarizeMonth,
-  totalBudgetForMonth,
 } from './summarize';
 import type { BudgetMap } from './summarize';
 import type { Category, Transaction } from '../types/data';
@@ -59,49 +59,101 @@ describe('budgetFor', () => {
   });
 });
 
-describe('totalBudgetForMonth', () => {
-  it('sums each category budget, applying overrides', () => {
-    const budgets: BudgetMap = {
-      groceries: { defaultMonthlyHalere: 800_000, overrides: { '2026-07': 1_000_000 } },
-      rent: { defaultMonthlyHalere: 1_500_000 },
-    };
-    expect(totalBudgetForMonth(budgets, '2026-07')).toBe(2_500_000);
-    expect(totalBudgetForMonth(budgets, '2026-08')).toBe(2_300_000);
-  });
-
-  it('returns null when no budgets are set', () => {
-    expect(totalBudgetForMonth({}, '2026-07')).toBeNull();
-  });
-});
-
-describe('isExpenseGroup', () => {
-  it('is true only for the budgeted expense groups', () => {
+describe('isExpenseGroup / isSavingsGroup', () => {
+  it('spending groups are fixed and variable only', () => {
     expect(isExpenseGroup('fixed')).toBe(true);
     expect(isExpenseGroup('variable')).toBe(true);
-    expect(isExpenseGroup('savings')).toBe(true);
+    expect(isExpenseGroup('savings')).toBe(false);
     expect(isExpenseGroup('income')).toBe(false);
     expect(isExpenseGroup('transfer')).toBe(false);
     expect(isExpenseGroup(undefined)).toBe(false);
+  });
+
+  it('the savings group stands alone', () => {
+    expect(isSavingsGroup('savings')).toBe(true);
+    expect(isSavingsGroup('fixed')).toBe(false);
+    expect(isSavingsGroup('income')).toBe(false);
+    expect(isSavingsGroup(undefined)).toBe(false);
   });
 });
 
 describe('summarizeMonth', () => {
   const noBudgets: BudgetMap = {};
 
-  it('splits income from spend and computes net', () => {
+  it('splits income, spending, and savings, and computes the leftover', () => {
     const s = summarizeMonth(
       [
         tx({ amountHalere: 5_000_000, categoryId: 'salary' }),
         tx({ amountHalere: -200_000, categoryId: 'groceries' }),
         tx({ amountHalere: -1_500_000, categoryId: 'rent' }),
+        tx({ amountHalere: -1_000_000, categoryId: 'save' }),
       ],
       categories,
       noBudgets,
       '2026-07',
     );
     expect(s.incomeHalere).toBe(5_000_000);
+    // Savings are NOT spending: only groceries + rent count here.
     expect(s.spendHalere).toBe(1_700_000);
-    expect(s.netHalere).toBe(3_300_000);
+    expect(s.savedHalere).toBe(1_000_000);
+    expect(s.leftoverHalere).toBe(2_300_000);
+  });
+
+  it('nets savings deposits against withdrawals; a withdrawal month goes negative', () => {
+    const s = summarizeMonth(
+      [
+        tx({ amountHalere: -500_000, categoryId: 'save' }),
+        tx({ amountHalere: 200_000, categoryId: 'save' }), // withdrawal back
+      ],
+      categories,
+      noBudgets,
+      '2026-07',
+    );
+    expect(s.savedHalere).toBe(300_000);
+    expect(s.spendHalere).toBe(0);
+
+    const withdrew = summarizeMonth(
+      [tx({ amountHalere: 400_000, categoryId: 'save' })],
+      categories,
+      noBudgets,
+      '2026-07',
+    );
+    expect(withdrew.savedHalere).toBe(-400_000);
+    expect(withdrew.leftoverHalere).toBe(400_000); // freed money is leftover
+  });
+
+  it('marks a savings target met (floor semantics), never over-budget', () => {
+    const budgets: BudgetMap = { save: { defaultMonthlyHalere: 500_000 } };
+    const met = summarizeMonth(
+      [tx({ amountHalere: -600_000, categoryId: 'save' })],
+      categories,
+      budgets,
+      '2026-07',
+    );
+    const metRow = met.byCategory.find((c) => c.categoryId === 'save');
+    expect(metRow?.targetMet).toBe(true);
+    // Exceeding a savings target is good — never flagged as over-budget.
+    expect(metRow?.overBudget).toBe(false);
+
+    const notMet = summarizeMonth(
+      [tx({ amountHalere: -100_000, categoryId: 'save' })],
+      categories,
+      budgets,
+      '2026-07',
+    );
+    const notMetRow = notMet.byCategory.find((c) => c.categoryId === 'save');
+    expect(notMetRow?.targetMet).toBe(false);
+    expect(notMetRow?.overBudget).toBe(false);
+    // Expense rows carry no targetMet at all.
+    const expense = summarizeMonth(
+      [tx({ amountHalere: -100_000, categoryId: 'groceries' })],
+      categories,
+      { groceries: { defaultMonthlyHalere: 50_000 } },
+      '2026-07',
+    );
+    const expenseRow = expense.byCategory.find((c) => c.categoryId === 'groceries');
+    expect(expenseRow?.targetMet).toBeUndefined();
+    expect(expenseRow?.overBudget).toBe(true); // ceiling semantics unchanged
   });
 
   it('nets a refund against its category', () => {
@@ -247,7 +299,8 @@ describe('summarizeMonth', () => {
     expect(s).toEqual({
       incomeHalere: 0,
       spendHalere: 0,
-      netHalere: 0,
+      savedHalere: 0,
+      leftoverHalere: 0,
       byCategory: [],
       unclassifiedCount: 0,
       transferCount: 0,

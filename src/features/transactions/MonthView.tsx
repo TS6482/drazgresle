@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Category, Rule, RuleField, Transaction } from '../../types/data';
-import { isExpenseGroup, summarizeMonth } from '../../engine/summarize';
+import { isExpenseGroup, isSavingsGroup, summarizeMonth } from '../../engine/summarize';
 import {
   classify,
   displayVendor,
@@ -9,6 +9,7 @@ import {
   suggestRuleForStored,
 } from '../../engine/classify';
 import { formatKc } from '../../engine/money';
+import { MonthDonut } from './MonthDonut';
 import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
 import { formatDayMonth, formatMonthLabel, shiftMonth } from '../../utils/dates';
@@ -99,10 +100,11 @@ export function MonthView() {
 
   const unclassified = ordered.filter((t) => t.categoryId === null);
 
-  // Budget-vs-actual is an EXPENSE view: income categories are already counted
-  // in the Income total above, so their rows are presentation noise here. The
-  // engine still returns them in byCategory (filtering is display-only).
-  const budgetRows = summary.byCategory.filter((row) => isExpenseGroup(row.group));
+  // Budget-vs-actual splits into spending (ceiling budgets) and saving (target
+  // floors). Income rows never appear — they are already the Income total. The
+  // engine still returns every row in byCategory (filtering is display-only).
+  const spendingRows = summary.byCategory.filter((row) => isExpenseGroup(row.group));
+  const savingRows = summary.byCategory.filter((row) => isSavingsGroup(row.group));
 
   function categoryName(categoryId: string | null): string {
     if (categoryId === null) {
@@ -414,6 +416,67 @@ export function MonthView() {
     );
   }
 
+  /**
+   * One budget-vs-actual accordion row. Spending rows keep ceiling semantics
+   * (red "Over by" when exceeded); saving rows are targets to HIT — reaching
+   * or beating one is shown positively, never as a problem.
+   */
+  function renderBudgetRow(row: (typeof summary.byCategory)[number], savings: boolean) {
+    const hasBudget = row.budgetHalere !== null;
+    const over = row.overBudget;
+    const met = savings && row.targetMet === true;
+    const fraction = hasBudget ? progressFraction(row.spendHalere, row.budgetHalere ?? 0) : 0;
+    const open = openCategories[row.categoryId] ?? false;
+    // Same objects as the full list — an edit here reflects there.
+    const categoryTxs = ordered.filter((t) => t.categoryId === row.categoryId);
+    return (
+      <li key={row.categoryId} className={styles.budgetRow}>
+        <button
+          type="button"
+          className={styles.budgetHeader}
+          onClick={() => toggleCategory(row.categoryId)}
+          aria-expanded={open}
+        >
+          <span className={styles.budgetTop}>
+            <span className={styles.budgetName}>{categoryName(row.categoryId)}</span>
+            <span className={styles.budgetFigures}>
+              {formatKc(row.spendHalere)}
+              {hasBudget && (
+                <span className={styles.budgetOf}> / {formatKc(row.budgetHalere ?? 0)}</span>
+              )}
+              <span
+                className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}
+                aria-hidden="true"
+              >
+                ›
+              </span>
+            </span>
+          </span>
+          {hasBudget && (
+            <span className={styles.track}>
+              <span
+                className={`${styles.fill} ${!savings && over ? styles.fillOver : ''}`}
+                style={{ width: `${fraction * 100}%` }}
+              />
+            </span>
+          )}
+          {!savings && over && (
+            <span className={styles.overText}>
+              Over by {formatKc(row.spendHalere - (row.budgetHalere ?? 0))}
+            </span>
+          )}
+          {met && <span className={styles.metText}>✓ target reached</span>}
+        </button>
+        {open &&
+          (categoryTxs.length > 0 ? (
+            <ul className={`${styles.txList} ${styles.drillList}`}>{categoryTxs.map(renderRow)}</ul>
+          ) : (
+            <p className={styles.muted}>No transactions in this category yet.</p>
+          ))}
+      </li>
+    );
+  }
+
   return (
     <section className={styles.screen}>
       <div className={styles.monthNav}>
@@ -448,10 +511,16 @@ export function MonthView() {
           <span className={styles.summaryValue}>{formatKc(summary.spendHalere)}</span>
         </div>
         <div className={styles.summaryItem}>
-          <span className={styles.summaryLabel}>Net</span>
-          <span className={styles.summaryValue}>{formatKc(summary.netHalere)}</span>
+          <span className={styles.summaryLabel}>Saved</span>
+          <span className={styles.summaryValue}>{formatKc(summary.savedHalere)}</span>
+        </div>
+        <div className={styles.summaryItem}>
+          <span className={styles.summaryLabel}>Left over</span>
+          <span className={styles.summaryValue}>{formatKc(summary.leftoverHalere)}</span>
         </div>
       </div>
+
+      <MonthDonut summary={summary} />
 
       <div className={styles.actionsRow}>
         <button type="button" className={styles.secondaryBtn} onClick={() => navigate('/import')}>
@@ -501,66 +570,25 @@ export function MonthView() {
         <p className={styles.muted}>{autoResult}</p>
       )}
 
-      {budgetRows.length > 0 && (
+      {(spendingRows.length > 0 || savingRows.length > 0) && (
         <div className={styles.block}>
           <h2 className={styles.blockHeading}>Budget vs actual</h2>
-          <ul className={styles.budgetList}>
-            {budgetRows.map((row) => {
-              const hasBudget = row.budgetHalere !== null;
-              const over = row.overBudget;
-              const fraction = hasBudget ? progressFraction(row.spendHalere, row.budgetHalere ?? 0) : 0;
-              const open = openCategories[row.categoryId] ?? false;
-              // Same objects as the full list — an edit here reflects there.
-              const categoryTxs = ordered.filter((t) => t.categoryId === row.categoryId);
-              return (
-                <li key={row.categoryId} className={styles.budgetRow}>
-                  <button
-                    type="button"
-                    className={styles.budgetHeader}
-                    onClick={() => toggleCategory(row.categoryId)}
-                    aria-expanded={open}
-                  >
-                    <span className={styles.budgetTop}>
-                      <span className={styles.budgetName}>{categoryName(row.categoryId)}</span>
-                      <span className={styles.budgetFigures}>
-                        {formatKc(row.spendHalere)}
-                        {hasBudget && (
-                          <span className={styles.budgetOf}> / {formatKc(row.budgetHalere ?? 0)}</span>
-                        )}
-                        <span
-                          className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}
-                          aria-hidden="true"
-                        >
-                          ›
-                        </span>
-                      </span>
-                    </span>
-                    {hasBudget && (
-                      <span className={styles.track}>
-                        <span
-                          className={`${styles.fill} ${over ? styles.fillOver : ''}`}
-                          style={{ width: `${fraction * 100}%` }}
-                        />
-                      </span>
-                    )}
-                    {over && (
-                      <span className={styles.overText}>
-                        Over by {formatKc(row.spendHalere - (row.budgetHalere ?? 0))}
-                      </span>
-                    )}
-                  </button>
-                  {open &&
-                    (categoryTxs.length > 0 ? (
-                      <ul className={`${styles.txList} ${styles.drillList}`}>
-                        {categoryTxs.map(renderRow)}
-                      </ul>
-                    ) : (
-                      <p className={styles.muted}>No transactions in this category yet.</p>
-                    ))}
-                </li>
-              );
-            })}
-          </ul>
+          {spendingRows.length > 0 && (
+            <>
+              <h3 className={styles.subHeading}>Spending</h3>
+              <ul className={styles.budgetList}>
+                {spendingRows.map((row) => renderBudgetRow(row, false))}
+              </ul>
+            </>
+          )}
+          {savingRows.length > 0 && (
+            <>
+              <h3 className={styles.subHeading}>Saving</h3>
+              <ul className={styles.budgetList}>
+                {savingRows.map((row) => renderBudgetRow(row, true))}
+              </ul>
+            </>
+          )}
         </div>
       )}
 

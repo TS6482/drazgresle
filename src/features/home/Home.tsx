@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { Category } from '../../types/data';
 import { computeNetWorth } from '../../engine/networth';
-import { isExpenseGroup, summarizeMonth, totalBudgetForMonth } from '../../engine/summarize';
+import { isExpenseGroup, summarizeMonth } from '../../engine/summarize';
 import { displayVendor } from '../../engine/classify';
 import { formatKc } from '../../engine/money';
 import { useDataStore } from '../../store/data';
@@ -36,10 +36,20 @@ export function Home() {
     [transactions, categories, budgets, currentMonthKey],
   );
 
-  const totalBudget = useMemo(
-    () => totalBudgetForMonth(budgets, currentMonthKey),
-    [budgets, currentMonthKey],
-  );
+  // SPENDING budgets only — savings targets are floors to hit, not part of the
+  // spending ceiling this card tracks. byCategory includes every budgeted
+  // category (even with no activity), so this sum is complete.
+  const totalBudget = useMemo(() => {
+    let total = 0;
+    let any = false;
+    for (const row of summary.byCategory) {
+      if (isExpenseGroup(row.group) && row.budgetHalere !== null) {
+        total += row.budgetHalere;
+        any = true;
+      }
+    }
+    return any ? total : null;
+  }, [summary]);
 
   // Expense groups only: an income category must never appear in "top
   // spending", even in a month with no spending at all.
@@ -127,6 +137,9 @@ export function Home() {
                 : `${formatKc(totalBudget - summary.spendHalere)} left this month`}
             </span>
           </>
+        )}
+        {summary.savedHalere !== 0 && (
+          <span className={styles.cardMeta}>Saved {formatKc(summary.savedHalere)}</span>
         )}
       </div>
 
