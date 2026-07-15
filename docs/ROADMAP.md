@@ -87,6 +87,10 @@ import.
 
 ## Decision log
 
+- 2026-07-15 — Theme: user disliked the green primary; picked **Indigo** from four validated
+  candidates (light #4338ca / dark #8f8af1, contrast-checked both modes). Chart palette
+  unchanged by user choice. App icon recolored to match.
+
 - 2026-07-15 — Account-entry refinements (user request): (1) Air Bank checking balance becomes
   statement-driven in Phase 2 (ending balance from each imported statement pre-fills
   snapshots; RB stays manual); (2) property + other-asset accounts carry purchase price+date,
