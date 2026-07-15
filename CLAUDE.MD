@@ -35,9 +35,13 @@ The user is an **amateur with little coding experience**. Consequences:
 
 ## Architecture guardrails (details in docs/ARCHITECTURE.md)
 
-- Two repos: `financial-planner` (public, app code, this repo) and `financial-planner-data`
+- Two repos: `drazgresle` (public, app code, this repo) and `drazgresle-data`
   (private, JSON data only). **No financial data, tokens, or sample bank statements may ever be
-  committed to the public repo** — real bank CSVs are test-input only, kept outside the repo.
+  committed to the public repo** — real statements are test-input only, kept outside the repo.
+  This includes **code comments, doc examples, and test fixtures**: never quote real account
+  numbers, names, employers, or merchant strings from the user's statements — fixtures must be
+  obviously invented (caught in review 2026-07-15). Before every commit touching parser/test
+  code, grep for statement-derived strings.
 - Stack: Vite + React + TypeScript (strict). Charts: Recharts. CSV: PapaParse. State: Zustand.
   Routing: hash-based (GitHub Pages has no server rewrites). No other runtime deps without a
   reason recorded in ARCHITECTURE.md.

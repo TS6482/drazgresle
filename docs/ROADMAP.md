@@ -41,22 +41,27 @@ Statuses: `[ ]` todo · `[~]` in progress · `[x]` done.
 
 ## Phase 2 — Income & expenses (CSV import, classification, budgets, cash)
 
-- [ ] **Gate: user provides sample statement PDFs from Air Bank and Raiffeisenbank CZ**
-      (both banks are PDF-only — verified in apps + desktop IB, 2026-07-15).
-- [ ] Parsers: `airbank.ts`, `raiffeisen.ts` over pdf.js text extraction (lazy-loaded
-      `pdfjs-dist`), built against the sample PDFs + tests on extracted-text fixtures.
-- [ ] Import wizard: pick PDF → parse → dedupe (`importHash`) → auto-classify → review → commit.
-- [ ] Statement-driven balance for the **Air Bank** checking account: capture each statement's
-      starting/ending balance on import; ending balance pre-fills that account's snapshot
-      balance (editable). RB stays manual (user choice, 2026-07-15).
-- [ ] Rules engine: correction of ANY transaction offers a vendor rule for future imports
-      (+ optional retroactive re-apply). Category management (seed ~10 coarse categories).
-- [ ] Budgets: default monthly target per category + per-month overrides; actual-vs-budget in
-      monthly summary.
-- [ ] Cash quick-add: one-tap-from-home form for `source: cash` transactions (phone-first).
-- [ ] Final home screen — "this month's money": spend vs budget, top categories, recent
-      transactions, quick-add button; net worth one tap away.
-- [ ] Salary + annual bonus % for both persons in settings.
+- [x] **Gate:** 6 months of real Air Bank statement PDFs provided (Jan–Jun 2026).
+      **Raiffeisenbank parked to Backlog** (user choice — RB is a lunch-money account only;
+      transfers to the RB lunch account classify as Eating out via a rule seeded in the
+      private data repo).
+- [x] Parser: `airbank.ts` + `importHash.ts` + `classify.ts`/`suggestRule` over pdf.js text
+      extraction (lazy `pdfjs-dist`, verified as a separate build chunk; module worker driven
+      in-browser). Built + reconciled against all 6 sample PDFs (start+Σ==end, Σ+==Připsáno,
+      Σ-==Odepsáno all match); synthetic test fixtures only. *(Phase 2b: Opus 2026-07-15,
+      101/101 tests, tsc+eslint clean.)*
+- [x] Import wizard (`#/import`): pick PDF → parse → dedupe (`importHash`, straddling months) →
+      auto-classify (rules) → review with save-as-rule learning → commit (per-month writes +
+      statement metadata). Buttons on Month + Home. *(Phase 2b.)*
+- [x] Statement-driven balance for the **Air Bank** account (`statementSource` flag on
+      checking/savings): latest imported statement's ending balance pre-fills its snapshot
+      balance, editable, with a `from statement <date>` hint. *(Phase 2b.)*
+- [x] Budgets: default monthly target per category + per-month overrides; actual-vs-budget in
+      monthly summary. *(Phase 2a: Opus 2026-07-15, Fable-reviewed, 70/70 tests, deployed.)*
+- [x] Cash quick-add: one-tap-from-home form for `source: cash` transactions (phone-first).
+- [x] Month view (`#/month`): income/spent/net summary, budget bars with over-by warnings,
+      transaction list with inline category edit; category management + salaries in Settings;
+      new "this month's money" home; 4-tab navigation. *(Phase 2a.)*
 
 ## Phase 3 — Projections
 

@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Account, Snapshot } from '../../types/data';
 import { formatKc, parseKcInput } from '../../engine/money';
 import { mortgageBalanceAt } from '../../engine/loan';
 import { computeNetWorth } from '../../engine/networth';
-import { useDataStore } from '../../store/data';
-import { todayIso } from '../../utils/dates';
+import { latestStatementMeta, useDataStore } from '../../store/data';
+import { shiftMonth, todayIso } from '../../utils/dates';
+import { monthKey } from '../../engine/summarize';
 import { MoneyInput, isMoneyValid } from '../shared/MoneyInput';
 import forms from '../shared/forms.module.css';
 import styles from './NetWorth.module.css';
@@ -30,9 +31,28 @@ export function SnapshotForm({ snapshot, accounts, snapshots, onDone }: Snapshot
   const saveSnapshot = useDataStore((s) => s.saveSnapshot);
   const deleteSnapshot = useDataStore((s) => s.deleteSnapshot);
   const saving = useDataStore((s) => s.saving);
+  const monthStatements = useDataStore((s) => s.monthStatements);
+  const loadMonth = useDataStore((s) => s.loadMonth);
 
   const activeAccounts = useMemo(() => accounts.filter((a) => a.active), [accounts]);
   const latest = snapshots.length > 0 ? snapshots[snapshots.length - 1] : undefined;
+
+  // For Air Bank statement-driven balances we need recent month files (their
+  // statement metadata may live a month or two back). Pull the last few in.
+  useEffect(() => {
+    const start = monthKey(todayIso());
+    for (let i = 0; i < 4; i++) {
+      void loadMonth(shiftMonth(start, -i));
+    }
+  }, [loadMonth]);
+
+  // The most recent imported statement, whose ending balance seeds any
+  // statement-driven account (new snapshots only).
+  const latestStatement = useMemo(() => latestStatementMeta(monthStatements), [monthStatements]);
+
+  function isStatementDriven(account: Account): boolean {
+    return account.statementSource === 'airbank';
+  }
 
   // Prefill is intentionally computed once, when the form mounts — a lazy
   // useState initializer, so later store updates never overwrite what the
@@ -76,6 +96,36 @@ export function SnapshotForm({ snapshot, accounts, snapshots, onDone }: Snapshot
     }
     return initial;
   });
+
+  // Accounts whose balance the user has typed into — statement prefill never
+  // overwrites those (respects the "don't clobber typing" rule).
+  const touched = useRef<Set<string>>(new Set());
+
+  function updateBalance(accountId: string, value: string) {
+    touched.current.add(accountId);
+    setBalances((prev) => ({ ...prev, [accountId]: value }));
+  }
+
+  // On a NEW snapshot, seed statement-driven accounts from the latest imported
+  // statement's ending balance, once that metadata has loaded — but only while
+  // the user hasn't edited the field.
+  useEffect(() => {
+    if (snapshot || latestStatement === null) {
+      return;
+    }
+    const raw = moneyToInput(latestStatement.endingBalanceHalere);
+    setBalances((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const account of activeAccounts) {
+        if (isStatementDriven(account) && !touched.current.has(account.id) && next[account.id] !== raw) {
+          next[account.id] = raw;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [snapshot, latestStatement, activeAccounts]);
 
   const allValid = activeAccounts.every((a) => isMoneyValid(balances[a.id] ?? '', true));
   const canSave = date !== '' && allValid;
@@ -160,17 +210,23 @@ export function SnapshotForm({ snapshot, accounts, snapshots, onDone }: Snapshot
         </p>
       )}
 
-      {activeAccounts.map((account) => (
-        <MoneyInput
-          key={account.id}
-          id={`bal-${account.id}`}
-          label={account.name}
-          value={balances[account.id] ?? ''}
-          onChange={(v) => setBalances((prev) => ({ ...prev, [account.id]: v }))}
-          hint={prefill.get(account.id)?.hint}
-          allowEmpty
-        />
-      ))}
+      {activeAccounts.map((account) => {
+        const statementHint =
+          !snapshot && isStatementDriven(account) && latestStatement !== null
+            ? `from statement ${latestStatement.periodEnd} — edit if it differs`
+            : undefined;
+        return (
+          <MoneyInput
+            key={account.id}
+            id={`bal-${account.id}`}
+            label={account.name}
+            value={balances[account.id] ?? ''}
+            onChange={(v) => updateBalance(account.id, v)}
+            hint={statementHint ?? prefill.get(account.id)?.hint}
+            allowEmpty
+          />
+        );
+      })}
 
       <div className={forms.field}>
         <label className={forms.label} htmlFor="snap-note">

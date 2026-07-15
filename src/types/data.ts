@@ -81,6 +81,13 @@ export interface Account {
   familyLoan?: FamilyLoan;
   /** Present only for `type === 'property'` or `'other-asset'`. */
   purchase?: Purchase;
+  /**
+   * When set, this account's balance is driven by imported bank statements
+   * rather than typed in at each snapshot: the latest statement's ending balance
+   * pre-fills its snapshot value (editable). Only `'airbank'` for now; meaningful
+   * for `checking`/`savings` accounts (see docs/ARCHITECTURE.md §4).
+   */
+  statementSource?: 'airbank';
 }
 
 /** `accounts.json`. */
@@ -160,10 +167,61 @@ export interface Transaction {
   importHash?: string;
 }
 
+/**
+ * Metadata for one imported statement, appended to the month file(s) its
+ * transactions land in (see docs/ARCHITECTURE.md §6). The Air Bank auto-balance
+ * (§4) reads `endingBalanceHalere` from the most recent such entry.
+ */
+export interface StatementMeta {
+  /** Which bank produced the statement. Air Bank only for now. */
+  source: 'airbank';
+  /** Statement period start, ISO `YYYY-MM-DD`. */
+  periodStart: IsoDate;
+  /** Statement period end, ISO `YYYY-MM-DD`. */
+  periodEnd: IsoDate;
+  /** Balance before the first transaction, signed halere. */
+  startingBalanceHalere: number;
+  /** Balance after the last transaction, signed halere — feeds the snapshot. */
+  endingBalanceHalere: number;
+  /** Statement account number, "number/bankCode". */
+  accountNumber: string;
+}
+
 /** One month's transactions file, `data/transactions/YYYY-MM.json`. */
 export interface MonthFile {
   schemaVersion: 1;
   transactions: Transaction[];
+  /** Imported-statement metadata whose period touches this month (optional). */
+  statements?: StatementMeta[];
+}
+
+// --- Rules (rules.json) ------------------------------------------------------
+
+/** Which transaction field a rule tests. */
+export type RuleField = 'counterparty' | 'description' | 'counterpartyAccount';
+
+/** How a rule's `pattern` is compared against the field (case-insensitive). */
+export type RuleMatch = 'exact' | 'contains';
+
+/**
+ * A vendor→category rule. `counterpartyAccount` rules are always `exact`. On
+ * import, `exact` rules win over `contains`; within a match type the first rule
+ * in the file wins (see engine/classify.ts). `createdFrom` records the
+ * transaction description the rule was suggested from, for later display.
+ */
+export interface Rule {
+  id: string;
+  field: RuleField;
+  match: RuleMatch;
+  pattern: string;
+  categoryId: string;
+  createdFrom?: string;
+}
+
+/** `rules.json`. */
+export interface RulesFile {
+  schemaVersion: 1;
+  rules: Rule[];
 }
 
 // --- Budgets (budgets.json) --------------------------------------------------

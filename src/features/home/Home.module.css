@@ -16,6 +16,17 @@
   cursor: pointer;
 }
 
+/* Secondary quick action — import a bank statement. */
+.importButton {
+  min-height: 44px;
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  font-size: var(--text-base);
+  cursor: pointer;
+}
+
 /* This-month card. */
 .card {
   display: flex;

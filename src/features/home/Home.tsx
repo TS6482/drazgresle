@@ -74,6 +74,9 @@ export function Home() {
       <button type="button" className={styles.addButton} onClick={() => navigate('/add')}>
         + Add cash expense
       </button>
+      <button type="button" className={styles.importButton} onClick={() => navigate('/import')}>
+        Import statement
+      </button>
 
       <div className={styles.card}>
         <div className={styles.cardTop}>

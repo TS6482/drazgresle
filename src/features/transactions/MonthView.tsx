@@ -168,11 +168,17 @@ export function MonthView() {
       </div>
 
       <div className={styles.actionsRow}>
-        <button type="button" className={styles.secondaryBtn} onClick={() => navigate('/budgets')}>
-          Edit budgets
+        <button type="button" className={styles.secondaryBtn} onClick={() => navigate('/import')}>
+          Import statement
         </button>
         <button type="button" className={styles.primaryBtn} onClick={() => navigate('/add')}>
           + Add cash
+        </button>
+      </div>
+
+      <div className={styles.actionsRow}>
+        <button type="button" className={styles.secondaryBtn} onClick={() => navigate('/budgets')}>
+          Edit budgets
         </button>
       </div>
 

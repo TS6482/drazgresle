@@ -8,6 +8,7 @@ import { NetWorth } from './features/networth/NetWorth';
 import { Accounts } from './features/accounts/Accounts';
 import { MonthView } from './features/transactions/MonthView';
 import { AddCash } from './features/transactions/AddCash';
+import { Import } from './features/import/Import';
 import { Budgets } from './features/budgets/Budgets';
 import { Settings } from './features/settings/Settings';
 import { ReadOnlyBanner } from './components/ReadOnlyBanner';
@@ -89,6 +90,8 @@ function renderRoute(route: string) {
       return <MonthView />;
     case '/add':
       return <AddCash />;
+    case '/import':
+      return <Import />;
     case '/budgets':
       return <Budgets />;
     case '/settings':

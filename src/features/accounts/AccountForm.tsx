@@ -65,6 +65,8 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
   const [name, setName] = useState(account?.name ?? '');
   const [type, setType] = useState<AccountType>(account?.type ?? 'checking');
   const [owner, setOwner] = useState<AccountOwner>(account?.owner ?? 'joint');
+  // Air Bank statement-driven balance toggle (checking/savings only).
+  const [fromStatements, setFromStatements] = useState(account?.statementSource === 'airbank');
 
   // Purchase fields (property / other-asset only). Date defaults blank so an
   // untouched form stays "neither filled" — both are required together.
@@ -179,6 +181,11 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
       owner,
       active: account?.active ?? true,
     };
+
+    // Statement-driven balance applies only to bank accounts.
+    if ((type === 'checking' || type === 'savings') && fromStatements) {
+      next.statementSource = 'airbank';
+    }
 
     if (type === 'mortgage') {
       const loan: MortgageLoan = {
@@ -312,6 +319,24 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
           You&apos;ll enter this account&apos;s balance when you take a net-worth snapshot
           (Net worth tab).
         </p>
+      )}
+
+      {(type === 'checking' || type === 'savings') && (
+        <label className={styles.checkboxRow} htmlFor="acc-from-statements">
+          <input
+            id="acc-from-statements"
+            type="checkbox"
+            checked={fromStatements}
+            onChange={(e) => setFromStatements(e.target.checked)}
+          />
+          <span>
+            Balance comes from Air Bank statements
+            <span className={styles.snapshotHint}>
+              {' '}
+              — each imported statement&apos;s ending balance pre-fills this account at snapshot time.
+            </span>
+          </span>
+        </label>
       )}
 
       {isPurchaseType(type) && (

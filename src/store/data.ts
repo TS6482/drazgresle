@@ -19,9 +19,12 @@ import type {
   IsoDate,
   MonthFile,
   Person,
+  Rule,
+  RulesFile,
   SettingsFile,
   Snapshot,
   SnapshotsFile,
+  StatementMeta,
   Transaction,
 } from '../types/data';
 
@@ -33,6 +36,7 @@ const SNAPSHOTS_PATH = 'data/snapshots.json';
 const CATEGORIES_PATH = 'data/categories.json';
 const BUDGETS_PATH = 'data/budgets.json';
 const SETTINGS_PATH = 'data/settings.json';
+const RULES_PATH = 'data/rules.json';
 
 function monthPath(month: string): string {
   return `data/transactions/${month}.json`;
@@ -45,7 +49,49 @@ type DataFile =
   | CategoriesFile
   | BudgetsFile
   | SettingsFile
+  | RulesFile
   | MonthFile;
+
+/** True when two statement-metadata entries describe the same statement. */
+function sameStatement(a: StatementMeta, b: StatementMeta): boolean {
+  return (
+    a.accountNumber === b.accountNumber &&
+    a.periodStart === b.periodStart &&
+    a.periodEnd === b.periodEnd
+  );
+}
+
+/** Build a MonthFile, attaching `statements` only when there are any. */
+function buildMonthFile(transactions: Transaction[], statements: StatementMeta[]): MonthFile {
+  const file: MonthFile = { schemaVersion: 1, transactions: sortTransactions(transactions) };
+  if (statements.length > 0) {
+    file.statements = statements;
+  }
+  return file;
+}
+
+/**
+ * The statement metadata with the latest period end across every loaded month,
+ * optionally restricted to one account number. Drives the Air Bank auto-balance
+ * (docs/ARCHITECTURE.md §4).
+ */
+export function latestStatementMeta(
+  monthStatements: Record<string, StatementMeta[]>,
+  accountNumber?: string,
+): StatementMeta | null {
+  let latest: StatementMeta | null = null;
+  for (const list of Object.values(monthStatements)) {
+    for (const meta of list) {
+      if (accountNumber !== undefined && meta.accountNumber !== accountNumber) {
+        continue;
+      }
+      if (latest === null || meta.periodEnd > latest.periodEnd) {
+        latest = meta;
+      }
+    }
+  }
+  return latest;
+}
 
 function sortSnapshots(snapshots: Snapshot[]): Snapshot[] {
   return [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
@@ -138,20 +184,61 @@ function mergeSettings(settings: SettingsFile) {
   return (): SettingsFile => settings;
 }
 
-/** Upsert one transaction by id into its month file, kept sorted. */
+/** Upsert one transaction by id into its month file, preserving statements. */
 function mergeTransaction(transaction: Transaction) {
   return (current: MonthFile | null): MonthFile => {
     const others = (current?.transactions ?? []).filter((t) => t.id !== transaction.id);
-    return { schemaVersion: 1, transactions: sortTransactions([...others, transaction]) };
+    return buildMonthFile([...others, transaction], current?.statements ?? []);
   };
 }
 
-/** Remove the transaction with `id` from its month file, kept sorted. */
+/** Remove the transaction with `id` from its month file, preserving statements. */
 function mergeDeleteTransaction(id: string) {
-  return (current: MonthFile | null): MonthFile => ({
-    schemaVersion: 1,
-    transactions: sortTransactions((current?.transactions ?? []).filter((t) => t.id !== id)),
-  });
+  return (current: MonthFile | null): MonthFile =>
+    buildMonthFile(
+      (current?.transactions ?? []).filter((t) => t.id !== id),
+      current?.statements ?? [],
+    );
+}
+
+/**
+ * Merge an imported statement into a month file: append transactions whose
+ * importHash is not already present (existing rows are preserved untouched) and
+ * append the statement metadata if that statement is not already recorded.
+ */
+function mergeImport(add: Transaction[], statement: StatementMeta | undefined) {
+  return (current: MonthFile | null): MonthFile => {
+    const existing = current?.transactions ?? [];
+    const seen = new Set(
+      existing.map((t) => t.importHash).filter((h): h is string => h !== undefined),
+    );
+    const merged = [...existing];
+    for (const tx of add) {
+      if (tx.importHash !== undefined && seen.has(tx.importHash)) {
+        continue;
+      }
+      merged.push(tx);
+      if (tx.importHash !== undefined) {
+        seen.add(tx.importHash);
+      }
+    }
+    const statements = [...(current?.statements ?? [])];
+    if (statement && !statements.some((s) => sameStatement(s, statement))) {
+      statements.push(statement);
+    }
+    return buildMonthFile(merged, statements);
+  };
+}
+
+/** Upsert each given rule by id onto the current rules file, keeping others. */
+function mergeRules(next: Rule[]) {
+  return (current: RulesFile | null): RulesFile => {
+    const byId = new Map<string, Rule>((current?.rules ?? []).map((r) => [r.id, r]));
+    for (const rule of next) {
+      byId.set(rule.id, rule);
+    }
+    return { schemaVersion: 1, rules: [...byId.values()] };
+  };
 }
 
 function describeError(err: unknown): string {
@@ -169,10 +256,13 @@ interface DataState {
   snapshots: Snapshot[];
   categories: Category[];
   budgets: Record<string, CategoryBudget>;
+  rules: Rule[];
   persons: Person[];
   projectionDefaults: Record<string, number>;
-  /** Cache of loaded month files, keyed by `'YYYY-MM'`. */
+  /** Cache of loaded month files' transactions, keyed by `'YYYY-MM'`. */
   months: Record<string, Transaction[]>;
+  /** Cache of loaded month files' statement metadata, keyed by `'YYYY-MM'`. */
+  monthStatements: Record<string, StatementMeta[]>;
   /** `'YYYY-MM'` for today, resolved at load time. */
   currentMonthKey: string;
 
@@ -181,6 +271,7 @@ interface DataState {
   categoriesSha: string | null;
   budgetsSha: string | null;
   settingsSha: string | null;
+  rulesSha: string | null;
   monthShas: Record<string, string | null>;
   monthsLoaded: Record<string, boolean>;
 
@@ -209,6 +300,16 @@ interface DataState {
   saveTransaction: (transaction: Transaction) => Promise<boolean>;
   /** Remove a transaction by id from the given month. */
   deleteTransaction: (month: string, id: string) => Promise<boolean>;
+  /** Upsert-by-id the given rules and persist. */
+  saveRules: (rules: Rule[]) => Promise<boolean>;
+  /**
+   * Commit an import: for each `'YYYY-MM'`, append its new-by-hash transactions
+   * and (optionally) its statement metadata to that month file. Each month is a
+   * separate structured-merge write. Returns false if any month fails.
+   */
+  saveImport: (
+    perMonth: Record<string, { transactions: Transaction[]; statement?: StatementMeta }>,
+  ) => Promise<boolean>;
   /** Clear all cached data (on disconnect). */
   reset: () => void;
 }
@@ -218,15 +319,18 @@ const EMPTY_STATE = {
   snapshots: [] as Snapshot[],
   categories: [] as Category[],
   budgets: {} as Record<string, CategoryBudget>,
+  rules: [] as Rule[],
   persons: [] as Person[],
   projectionDefaults: {} as Record<string, number>,
   months: {} as Record<string, Transaction[]>,
+  monthStatements: {} as Record<string, StatementMeta[]>,
   currentMonthKey: monthKey(todayIso()),
   accountsSha: null,
   snapshotsSha: null,
   categoriesSha: null,
   budgetsSha: null,
   settingsSha: null,
+  rulesSha: null,
   monthShas: {} as Record<string, string | null>,
   monthsLoaded: {} as Record<string, boolean>,
   loading: false,
@@ -280,13 +384,14 @@ export const useDataStore = create<DataState>((set, get) => {
       const mk = monthKey(todayIso());
       set({ loading: true, error: null });
       try {
-        const [accountsFile, snapshotsFile, categoriesFile, budgetsFile, settingsFile, monthFile] =
+        const [accountsFile, snapshotsFile, categoriesFile, budgetsFile, settingsFile, rulesFile, monthFile] =
           await Promise.all([
             client.getJsonFile<AccountsFile>(ACCOUNTS_PATH),
             client.getJsonFile<SnapshotsFile>(SNAPSHOTS_PATH),
             client.getJsonFile<CategoriesFile>(CATEGORIES_PATH),
             client.getJsonFile<BudgetsFile>(BUDGETS_PATH),
             client.getJsonFile<SettingsFile>(SETTINGS_PATH),
+            client.getJsonFile<RulesFile>(RULES_PATH),
             client.getJsonFile<MonthFile>(monthPath(mk)),
           ]);
         set({
@@ -301,8 +406,11 @@ export const useDataStore = create<DataState>((set, get) => {
           persons: settingsFile?.data.persons ?? [],
           projectionDefaults: settingsFile?.data.projectionDefaults ?? {},
           settingsSha: settingsFile?.sha ?? null,
+          rules: rulesFile?.data.rules ?? [],
+          rulesSha: rulesFile?.sha ?? null,
           currentMonthKey: mk,
           months: { [mk]: sortTransactions(monthFile?.data.transactions ?? []) },
+          monthStatements: { [mk]: monthFile?.data.statements ?? [] },
           monthShas: { [mk]: monthFile?.sha ?? null },
           monthsLoaded: { [mk]: true },
           loading: false,
@@ -325,6 +433,7 @@ export const useDataStore = create<DataState>((set, get) => {
         const file = await client.getJsonFile<MonthFile>(monthPath(month));
         set((state) => ({
           months: { ...state.months, [month]: sortTransactions(file?.data.transactions ?? []) },
+          monthStatements: { ...state.monthStatements, [month]: file?.data.statements ?? [] },
           monthShas: { ...state.monthShas, [month]: file?.sha ?? null },
           monthsLoaded: { ...state.monthsLoaded, [month]: true },
         }));
@@ -440,10 +549,10 @@ export const useDataStore = create<DataState>((set, get) => {
       if (!get().monthsLoaded[mk]) {
         await get().loadMonth(mk);
       }
-      const localCurrent: MonthFile = {
-        schemaVersion: 1,
-        transactions: get().months[mk] ?? [],
-      };
+      const localCurrent = buildMonthFile(
+        get().months[mk] ?? [],
+        get().monthStatements[mk] ?? [],
+      );
       const result = await write(
         monthPath(mk),
         get().monthShas[mk] ?? null,
@@ -456,6 +565,7 @@ export const useDataStore = create<DataState>((set, get) => {
       }
       set((state) => ({
         months: { ...state.months, [mk]: result.data.transactions },
+        monthStatements: { ...state.monthStatements, [mk]: result.data.statements ?? [] },
         monthShas: { ...state.monthShas, [mk]: result.sha },
         monthsLoaded: { ...state.monthsLoaded, [mk]: true },
       }));
@@ -466,10 +576,10 @@ export const useDataStore = create<DataState>((set, get) => {
       if (!get().monthsLoaded[month]) {
         await get().loadMonth(month);
       }
-      const localCurrent: MonthFile = {
-        schemaVersion: 1,
-        transactions: get().months[month] ?? [],
-      };
+      const localCurrent = buildMonthFile(
+        get().months[month] ?? [],
+        get().monthStatements[month] ?? [],
+      );
       const result = await write(
         monthPath(month),
         get().monthShas[month] ?? null,
@@ -482,9 +592,55 @@ export const useDataStore = create<DataState>((set, get) => {
       }
       set((state) => ({
         months: { ...state.months, [month]: result.data.transactions },
+        monthStatements: { ...state.monthStatements, [month]: result.data.statements ?? [] },
         monthShas: { ...state.monthShas, [month]: result.sha },
         monthsLoaded: { ...state.monthsLoaded, [month]: true },
       }));
+      return true;
+    },
+
+    saveRules: async (next) => {
+      const localCurrent: RulesFile = { schemaVersion: 1, rules: get().rules };
+      const result = await write(
+        RULES_PATH,
+        get().rulesSha,
+        localCurrent,
+        mergeRules(next),
+        'Update classification rules',
+      );
+      if (!result) {
+        return false;
+      }
+      set({ rules: result.data.rules, rulesSha: result.sha });
+      return true;
+    },
+
+    saveImport: async (perMonth) => {
+      for (const [mk, payload] of Object.entries(perMonth)) {
+        if (!get().monthsLoaded[mk]) {
+          await get().loadMonth(mk);
+        }
+        const localCurrent = buildMonthFile(
+          get().months[mk] ?? [],
+          get().monthStatements[mk] ?? [],
+        );
+        const result = await write(
+          monthPath(mk),
+          get().monthShas[mk] ?? null,
+          localCurrent,
+          mergeImport(payload.transactions, payload.statement),
+          `Import statement into ${mk}`,
+        );
+        if (!result) {
+          return false;
+        }
+        set((state) => ({
+          months: { ...state.months, [mk]: result.data.transactions },
+          monthStatements: { ...state.monthStatements, [mk]: result.data.statements ?? [] },
+          monthShas: { ...state.monthShas, [mk]: result.sha },
+          monthsLoaded: { ...state.monthsLoaded, [mk]: true },
+        }));
+      }
       return true;
     },
 

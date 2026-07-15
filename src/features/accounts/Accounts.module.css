@@ -37,6 +37,27 @@
   color: var(--color-text-muted);
 }
 
+/* Inline checkbox + label row (e.g. the statement-driven balance toggle). */
+.checkboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.checkboxRow input {
+  min-width: 20px;
+  min-height: 20px;
+  margin-top: 2px;
+}
+
+.checkboxRow .snapshotHint {
+  display: inline;
+  margin: 0;
+}
+
 /* "Take your first snapshot" callout — same look as the home-screen nudge. */
 .callout {
   display: flex;
