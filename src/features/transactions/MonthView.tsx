@@ -33,15 +33,25 @@ export function MonthView() {
   const [viewedMonth, setViewedMonth] = useState(currentMonthKey);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [autoResult, setAutoResult] = useState<string | null>(null);
+  // Category drill-downs open in budget-vs-actual (several may be open at once).
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
+  // The full transaction list is collapsed by default; unclassified stay pinned.
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     void loadMonth(viewedMonth);
   }, [viewedMonth, loadMonth]);
 
-  /** Change months and drop the previous month's auto-classify message. */
+  /** Change months, dropping the previous month's transient view state. */
   function goToMonth(delta: number) {
     setAutoResult(null);
+    setOpenCategories({});
+    setShowAll(false);
     setViewedMonth((m) => shiftMonth(m, delta));
+  }
+
+  function toggleCategory(categoryId: string) {
+    setOpenCategories((prev) => ({ ...prev, [categoryId]: !(prev[categoryId] ?? false) }));
   }
 
   const transactions = useMemo(() => months[viewedMonth] ?? [], [months, viewedMonth]);
@@ -261,30 +271,54 @@ export function MonthView() {
               const hasBudget = row.budgetHalere !== null;
               const over = row.overBudget;
               const fraction = hasBudget ? progressFraction(row.spendHalere, row.budgetHalere ?? 0) : 0;
+              const open = openCategories[row.categoryId] ?? false;
+              // Same objects as the full list — an edit here reflects there.
+              const categoryTxs = ordered.filter((t) => t.categoryId === row.categoryId);
               return (
                 <li key={row.categoryId} className={styles.budgetRow}>
-                  <div className={styles.budgetTop}>
-                    <span className={styles.budgetName}>{categoryName(row.categoryId)}</span>
-                    <span className={styles.budgetFigures}>
-                      {formatKc(row.spendHalere)}
-                      {hasBudget && (
-                        <span className={styles.budgetOf}> / {formatKc(row.budgetHalere ?? 0)}</span>
-                      )}
+                  <button
+                    type="button"
+                    className={styles.budgetHeader}
+                    onClick={() => toggleCategory(row.categoryId)}
+                    aria-expanded={open}
+                  >
+                    <span className={styles.budgetTop}>
+                      <span className={styles.budgetName}>{categoryName(row.categoryId)}</span>
+                      <span className={styles.budgetFigures}>
+                        {formatKc(row.spendHalere)}
+                        {hasBudget && (
+                          <span className={styles.budgetOf}> / {formatKc(row.budgetHalere ?? 0)}</span>
+                        )}
+                        <span
+                          className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}
+                          aria-hidden="true"
+                        >
+                          ›
+                        </span>
+                      </span>
                     </span>
-                  </div>
-                  {hasBudget && (
-                    <div className={styles.track}>
-                      <div
-                        className={`${styles.fill} ${over ? styles.fillOver : ''}`}
-                        style={{ width: `${fraction * 100}%` }}
-                      />
-                    </div>
-                  )}
-                  {over && (
-                    <span className={styles.overText}>
-                      Over by {formatKc(row.spendHalere - (row.budgetHalere ?? 0))}
-                    </span>
-                  )}
+                    {hasBudget && (
+                      <span className={styles.track}>
+                        <span
+                          className={`${styles.fill} ${over ? styles.fillOver : ''}`}
+                          style={{ width: `${fraction * 100}%` }}
+                        />
+                      </span>
+                    )}
+                    {over && (
+                      <span className={styles.overText}>
+                        Over by {formatKc(row.spendHalere - (row.budgetHalere ?? 0))}
+                      </span>
+                    )}
+                  </button>
+                  {open &&
+                    (categoryTxs.length > 0 ? (
+                      <ul className={`${styles.txList} ${styles.drillList}`}>
+                        {categoryTxs.map(renderRow)}
+                      </ul>
+                    ) : (
+                      <p className={styles.muted}>No transactions in this category yet.</p>
+                    ))}
                 </li>
               );
             })}
@@ -294,8 +328,20 @@ export function MonthView() {
 
       {ordered.length > 0 && (
         <div className={styles.block}>
-          <h2 className={styles.blockHeading}>All transactions</h2>
-          <ul className={styles.txList}>{ordered.map(renderRow)}</ul>
+          <button
+            type="button"
+            className={styles.secondaryBtn}
+            onClick={() => setShowAll((v) => !v)}
+            aria-expanded={showAll}
+          >
+            {showAll ? 'Hide transactions' : `Show all ${ordered.length} transactions`}
+          </button>
+          {showAll && (
+            <>
+              <h2 className={styles.blockHeading}>All transactions</h2>
+              <ul className={styles.txList}>{ordered.map(renderRow)}</ul>
+            </>
+          )}
         </div>
       )}
     </section>

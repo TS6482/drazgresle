@@ -118,11 +118,48 @@
 .budgetRow {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
   padding: var(--space-3);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
+}
+
+/* The tappable accordion header of a budget row: a plain button that keeps the
+   card's internal layout and is comfortably thumb-sized. */
+.budgetHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Chevron affordance; rotates when the category is expanded. */
+.chevron {
+  display: inline-block;
+  margin-left: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-lg);
+  line-height: 1;
+  transition: transform 120ms ease;
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+/* The drilled-down transaction list inside an expanded budget row. */
+.drillList {
+  margin-top: var(--space-1);
 }
 
 .budgetTop {
@@ -146,6 +183,7 @@
 }
 
 .track {
+  display: block; /* also used as a <span> inside the accordion button */
   height: 8px;
   border-radius: 999px;
   background: var(--color-surface-alt);
@@ -153,6 +191,7 @@
 }
 
 .fill {
+  display: block;
   height: 100%;
   border-radius: 999px;
   background: var(--color-primary);
