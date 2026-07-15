@@ -31,6 +31,34 @@
   color: var(--color-text-muted);
 }
 
+.snapshotHint {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* "Take your first snapshot" callout — same look as the home-screen nudge. */
+.callout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  text-align: left;
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  color: var(--color-warning-text);
+  cursor: pointer;
+}
+
+.calloutTitle {
+  font-weight: 700;
+}
+
+.calloutText {
+  font-size: var(--text-sm);
+}
+
 .group {
   display: flex;
   flex-direction: column;
@@ -109,7 +137,9 @@
 
 .planRow {
   display: grid;
-  grid-template-columns: 1fr 1.4fr auto;
+  /* minmax(0, …) lets the inputs shrink below their intrinsic width — plain
+     1fr tracks bottom out at `min-width: auto` and overflow on phones. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
   gap: var(--space-2);
   margin-bottom: var(--space-2);
   align-items: center;

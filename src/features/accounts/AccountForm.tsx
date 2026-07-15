@@ -218,6 +218,13 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
         </div>
       </div>
 
+      {type !== 'mortgage' && type !== 'family-loan' && (
+        <p className={styles.snapshotHint}>
+          You&apos;ll enter this account&apos;s balance when you take a net-worth snapshot
+          (Net worth tab).
+        </p>
+      )}
+
       {type === 'mortgage' && (
         <fieldset className={styles.fieldset}>
           <legend className={styles.legend}>Mortgage details</legend>

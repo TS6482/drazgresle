@@ -18,6 +18,9 @@
 .input,
 .select {
   width: 100%;
+  /* Allow the control to shrink inside flex/grid cells — date inputs and
+     selects have large intrinsic widths on mobile and would overflow. */
+  min-width: 0;
   min-height: 44px;
   padding: var(--space-2) var(--space-3);
   font-size: var(--text-base);
@@ -54,13 +57,20 @@
   color: var(--color-danger);
 }
 
+/* Two-up field rows. Phone-first: fields sit side by side while they fit and
+   wrap to full width when they don't. min-width: 0 overrides the flex default
+   `min-width: auto`, which otherwise stops a field shrinking below its
+   control's intrinsic width (date inputs, selects) and makes the row overflow
+   and overlap at 360–430px. */
 .row {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-3);
 }
 
 .row > .field {
-  flex: 1;
+  flex: 1 1 140px;
+  min-width: 0;
 }
 
 /* Primary / secondary action buttons, thumb-sized. */

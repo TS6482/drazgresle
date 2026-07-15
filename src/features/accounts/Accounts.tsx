@@ -4,6 +4,7 @@ import { classify } from '../../engine/networth';
 import { mortgageBalanceAt } from '../../engine/loan';
 import { formatKc } from '../../engine/money';
 import { useDataStore } from '../../store/data';
+import { navigate } from '../../router/useHashRoute';
 import { todayIso } from '../../utils/dates';
 import { ACCOUNT_TYPE_LABELS, CLASS_LABELS, CLASS_ORDER } from '../shared/labels';
 import { AccountForm } from './AccountForm';
@@ -69,6 +70,15 @@ export function Accounts() {
           No accounts yet. Add your bank accounts, investments, property, and any loans to start
           tracking net worth.
         </p>
+      )}
+
+      {!loading && accounts.some((a) => a.active) && snapshots.length === 0 && (
+        <button type="button" className={styles.callout} onClick={() => navigate('/networth')}>
+          <span className={styles.calloutTitle}>Accounts ready</span>
+          <span className={styles.calloutText}>
+            Take your first snapshot to record their balances.
+          </span>
+        </button>
       )}
 
       {grouped.map((group) => (
