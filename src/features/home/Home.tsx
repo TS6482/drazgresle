@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { Category } from '../../types/data';
 import { computeNetWorth } from '../../engine/networth';
 import { isExpenseGroup, summarizeMonth, totalBudgetForMonth } from '../../engine/summarize';
+import { displayVendor } from '../../engine/classify';
 import { formatKc } from '../../engine/money';
 import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
@@ -67,6 +68,15 @@ export function Home() {
       return 'Uncategorized';
     }
     return byId.get(categoryId)?.name ?? categoryId;
+  }
+
+  /** Recent rows lead with the vendor (merchant for card rows); cash/manual
+   *  entries keep their typed note/counterparty. */
+  function recentLine(tx: (typeof recent)[number]): string {
+    if (tx.source === 'cash' || tx.source === 'manual') {
+      return tx.counterparty || tx.description || categoryName(tx.categoryId);
+    }
+    return displayVendor(tx);
   }
 
   const budgetFraction =
@@ -149,9 +159,7 @@ export function Home() {
           <ul className={styles.miniList}>
             {recent.map((tx) => (
               <li key={tx.id} className={styles.miniRow}>
-                <span className={styles.recentWho}>
-                  {tx.counterparty || tx.description || categoryName(tx.categoryId)}
-                </span>
+                <span className={styles.recentWho}>{recentLine(tx)}</span>
                 <span className={styles.miniRight}>
                   <span className={styles.recentDate}>{formatDayMonth(tx.date)}</span>
                   <span

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Category, Transaction } from '../../types/data';
 import { isExpenseGroup, summarizeMonth } from '../../engine/summarize';
-import { classify } from '../../engine/classify';
+import { classify, displayVendor } from '../../engine/classify';
 import { formatKc } from '../../engine/money';
 import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
@@ -121,9 +121,22 @@ export function MonthView() {
     }
   }
 
+  /** Primary row line: the VENDOR for bank rows (merchant for card payments —
+   *  the counterparty is just the cardholder); cash/manual entries keep their
+   *  typed note/counterparty as before. */
+  function primaryLine(tx: Transaction): string {
+    if (tx.source === 'cash' || tx.source === 'manual') {
+      return tx.counterparty || tx.description || categoryName(tx.categoryId);
+    }
+    return displayVendor(tx);
+  }
+
   function renderRow(tx: Transaction) {
     const editing = editingId === tx.id;
     const income = tx.amountHalere > 0;
+    const primary = primaryLine(tx);
+    // Secondary context: show the full description unless it IS the primary.
+    const secondary = tx.description.trim() !== primary ? tx.description.trim() : '';
     return (
       <li key={tx.id} className={styles.txItem}>
         <button
@@ -133,9 +146,7 @@ export function MonthView() {
           aria-expanded={editing}
         >
           <span className={styles.txMain}>
-            <span className={styles.txWho}>
-              {tx.counterparty || tx.description || categoryName(tx.categoryId)}
-            </span>
+            <span className={styles.txWho}>{primary}</span>
             <span className={styles.txMeta}>
               <span className={styles.txDate}>{formatDayMonth(tx.date)}</span>
               <span
@@ -143,6 +154,7 @@ export function MonthView() {
               >
                 {categoryName(tx.categoryId)}
               </span>
+              {secondary && <span className={styles.txDesc}>{secondary}</span>}
             </span>
           </span>
           <span className={`${styles.txAmount} ${income ? styles.income : ''}`}>

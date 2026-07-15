@@ -47,6 +47,64 @@ export function extractMerchant(description: string): string | null {
   return first === '' ? null : first;
 }
 
+/** Longest primary-line vendor text before truncation kicks in. */
+const VENDOR_MAX_CHARS = 40;
+
+/** Shown when a transaction has no usable text in any field. */
+const VENDOR_FALLBACK = '—';
+
+/** Cap a vendor string at ~{@link VENDOR_MAX_CHARS} chars with an ellipsis. */
+function truncateVendor(text: string): string {
+  if (text.length <= VENDOR_MAX_CHARS) {
+    return text;
+  }
+  return `${text.slice(0, VENDOR_MAX_CHARS - 1).trimEnd()}…`;
+}
+
+/**
+ * The vendor a transaction row should LEAD with, so misclassifications are
+ * spottable at a glance:
+ *
+ * - Card rows (see {@link isCardRow}): the counterparty is the cardholder —
+ *   always one of the two spouses, useless — so the merchant from the
+ *   description leads instead, then the counterparty, then the description.
+ * - Other rows with a counterparty name: that name (transfers, salary, …).
+ * - Otherwise the description's merchant segment (or the description itself,
+ *   truncated), then the counterparty account as a last identifier.
+ *
+ * Never returns an empty string — `'—'` when every field is blank.
+ */
+export function displayVendor(tx: ClassifiableTransaction): string {
+  const counterparty = tx.counterparty.trim();
+  const description = tx.description.trim();
+
+  if (isCardRow(tx)) {
+    const merchant = extractMerchant(description);
+    if (merchant) {
+      return truncateVendor(merchant);
+    }
+    if (counterparty) {
+      return counterparty;
+    }
+    return description ? truncateVendor(description) : VENDOR_FALLBACK;
+  }
+
+  if (counterparty) {
+    return counterparty;
+  }
+
+  const merchant = extractMerchant(description);
+  if (merchant) {
+    return truncateVendor(merchant);
+  }
+  if (description) {
+    return truncateVendor(description);
+  }
+
+  const account = tx.counterpartyAccount?.trim();
+  return account ? account : VENDOR_FALLBACK;
+}
+
 /** The value of the field a rule tests, or `''` when absent. */
 function fieldValue(tx: ClassifiableTransaction, field: RuleField): string {
   if (field === 'counterparty') {

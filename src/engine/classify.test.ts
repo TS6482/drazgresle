@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   classify,
+  displayVendor,
   extractMerchant,
   suggestRule,
   type ClassifiableTransaction,
@@ -95,6 +96,66 @@ describe('extractMerchant', () => {
     expect(extractMerchant('')).toBeNull();
     expect(extractMerchant('   ')).toBeNull();
     expect(extractMerchant(', BRNO')).toBeNull();
+  });
+});
+
+describe('displayVendor', () => {
+  it('leads with the merchant for card rows (never the cardholder)', () => {
+    expect(
+      displayVendor({
+        counterparty: 'Jan Novák',
+        description: 'BURGER PALACE OC PLAZA 12, BRNO, 60200, CZE',
+        bankType: 'Platba kartou',
+      }),
+    ).toBe('BURGER PALACE OC PLAZA 12');
+  });
+
+  it('falls back to counterparty, then description, for card rows', () => {
+    expect(
+      displayVendor({ counterparty: 'Jan Novák', description: '', bankType: 'Platba kartou' }),
+    ).toBe('Jan Novák');
+    expect(
+      displayVendor({ counterparty: '', description: 'PLAIN TEXT', bankType: 'Platba kartou' }),
+    ).toBe('PLAIN TEXT');
+  });
+
+  it('uses the counterparty name for non-card rows', () => {
+    expect(
+      displayVendor({
+        counterparty: 'ACME CORP',
+        description: 'VS9 / KS138',
+        bankType: 'Příchozí úhrada',
+        counterpartyAccount: '9876543210/0300',
+      }),
+    ).toBe('ACME CORP');
+    expect(displayVendor({ counterparty: 'Eva Malá', description: '' })).toBe('Eva Malá');
+  });
+
+  it('uses the merchant segment when there is no counterparty', () => {
+    expect(
+      displayVendor({ counterparty: '', description: 'Payment for the trip, extra notes' }),
+    ).toBe('Payment for the trip');
+  });
+
+  it('truncates long text to ~40 chars with an ellipsis', () => {
+    const long = 'A'.repeat(60);
+    const out = displayVendor({ counterparty: '', description: long });
+    expect(out.length).toBeLessThanOrEqual(40);
+    expect(out.endsWith('…')).toBe(true);
+  });
+
+  it('falls back to the counterparty account as a last identifier', () => {
+    expect(
+      displayVendor({ counterparty: '', description: '', counterpartyAccount: '1029384756/2010' }),
+    ).toBe('1029384756/2010');
+  });
+
+  it('never returns an empty string', () => {
+    expect(displayVendor({ counterparty: '', description: '' })).toBe('—');
+    expect(displayVendor({ counterparty: '  ', description: '   ' })).toBe('—');
+    expect(
+      displayVendor({ counterparty: '', description: '', bankType: 'Platba kartou' }),
+    ).toBe('—');
   });
 });
 

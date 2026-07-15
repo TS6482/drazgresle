@@ -256,6 +256,18 @@
 .txDate {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* Full-description context on the secondary line: one line, ellipsized. */
+.txDesc {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chip {

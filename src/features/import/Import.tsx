@@ -8,7 +8,7 @@ import {
   type ParsedTransaction,
 } from '../../engine/parsers/airbank';
 import { importHash } from '../../engine/importHash';
-import { classify, suggestRule } from '../../engine/classify';
+import { classify, displayVendor, suggestRule } from '../../engine/classify';
 import { formatKc } from '../../engine/money';
 import { monthKey } from '../../engine/summarize';
 import { useDataStore } from '../../store/data';
@@ -565,10 +565,18 @@ export function Import() {
     const p = item.parsed;
     const edit = rowEdits[item.id];
     const cat = effective.get(item.id) ?? null;
+    // Lead with the vendor (merchant for card rows — the counterparty is just
+    // the cardholder), same as the month view.
+    const vendor = displayVendor({
+      counterparty: p.counterparty,
+      description: p.description,
+      bankType: p.type,
+      counterpartyAccount: p.counterpartyAccount,
+    });
     return (
       <li key={item.id} className={styles.row}>
         <div className={styles.rowTop}>
-          <span className={styles.who}>{p.counterparty || p.description || p.type}</span>
+          <span className={styles.who}>{vendor}</span>
           <span className={`${styles.amount} ${p.amountHalere > 0 ? styles.income : ''}`}>
             {formatKc(p.amountHalere)}
           </span>
@@ -577,7 +585,9 @@ export function Import() {
           <span className={styles.date}>{formatDayMonth(p.date)}</span>
           <span className={styles.type}>{p.type}</span>
         </div>
-        {p.description && p.counterparty && <span className={styles.desc}>{p.description}</span>}
+        {p.description && p.description !== vendor && (
+          <span className={styles.desc}>{p.description}</span>
+        )}
         <CategoryPicker
           id={`imp-cat-${item.id}`}
           value={cat}
