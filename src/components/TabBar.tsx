@@ -9,6 +9,7 @@ interface Tab {
 
 const TABS: Tab[] = [
   { route: '/', label: 'Home', icon: '⌂' },
+  { route: '/month', label: 'Month', icon: '🧾' },
   { route: '/networth', label: 'Net worth', icon: '📈' },
   { route: '/accounts', label: 'Accounts', icon: '≣' },
 ];

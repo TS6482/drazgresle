@@ -2,7 +2,7 @@
 // screens. Colours themselves live in CSS (theme-aware custom properties); here
 // we only name each series and point at its CSS variable.
 
-import type { AccountType } from '../../types/data';
+import type { AccountType, CategoryGroup } from '../../types/data';
 import type { AssetClass } from '../../engine/networth';
 
 export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
@@ -71,3 +71,21 @@ export const LIABILITY_SERIES: SeriesMeta = {
   label: 'Liabilities',
   cssVar: '--series-liabilities',
 };
+
+/** Category-group labels used by the pickers, budgets, and settings screens. */
+export const CATEGORY_GROUP_LABELS: Record<CategoryGroup, string> = {
+  income: 'Income',
+  fixed: 'Fixed expenses',
+  variable: 'Variable expenses',
+  savings: 'Savings',
+  transfer: 'Transfer',
+};
+
+/** Order category groups are offered/grouped in (income first, transfer last). */
+export const CATEGORY_GROUP_ORDER: CategoryGroup[] = [
+  'income',
+  'fixed',
+  'variable',
+  'savings',
+  'transfer',
+];

@@ -44,6 +44,21 @@
   cursor: pointer;
 }
 
+.iconButton {
+  min-width: 36px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--color-on-primary);
+  color: var(--color-on-primary);
+  border-radius: var(--radius);
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
 .content {
   flex: 1;
   width: 100%;

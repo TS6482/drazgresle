@@ -41,9 +41,11 @@ Statuses: `[ ]` todo · `[~]` in progress · `[x]` done.
 
 ## Phase 2 — Income & expenses (CSV import, classification, budgets, cash)
 
-- [ ] **Gate: user provides anonymized sample CSV exports from Air Bank and Raiffeisenbank CZ.**
-- [ ] Parsers: `airbank.ts`, `raiffeisen.ts` (windows-1250, header auto-detect) + tests.
-- [ ] Import wizard: upload → parse → dedupe (`importHash`) → auto-classify → review → commit.
+- [ ] **Gate: user provides sample statement PDFs from Air Bank and Raiffeisenbank CZ**
+      (both banks are PDF-only — verified in apps + desktop IB, 2026-07-15).
+- [ ] Parsers: `airbank.ts`, `raiffeisen.ts` over pdf.js text extraction (lazy-loaded
+      `pdfjs-dist`), built against the sample PDFs + tests on extracted-text fixtures.
+- [ ] Import wizard: pick PDF → parse → dedupe (`importHash`) → auto-classify → review → commit.
 - [ ] Statement-driven balance for the **Air Bank** checking account: capture each statement's
       starting/ending balance on import; ending balance pre-fills that account's snapshot
       balance (editable). RB stays manual (user choice, 2026-07-15).
@@ -86,6 +88,17 @@ Monte Carlo · multi-currency · PSD2 bank connections · Czech UI translation �
 import.
 
 ## Decision log
+
+- 2026-07-15 — Import format pivot: both banks are **PDF-only** (user verified apps + desktop
+  IB). Importer switches from CSV/PapaParse to client-side PDF parsing via lazy-loaded
+  `pdfjs-dist`; statements never leave the device; PDF start/end balances feed the Air Bank
+  auto-balance. Samples = unmodified statement PDFs (impractical to anonymize; local-only).
+- 2026-07-15 — Phase 2 design round: transfers between own accounts get a reserved 'Transfer'
+  category — visible but excluded from income/expense totals and budgets, auto-taggable by
+  rules. Non-salary incoming money (refunds/reimbursements) nets against its expense category
+  (summaries show true monthly cost). Amount convention: signed halere, negative = outflow.
+  Samples handed over via C:\ClaudeProjects\statement-samples\ (outside repo); light
+  anonymization (names + account numbers; merchants/amounts may stay).
 
 - 2026-07-15 — Theme: user disliked the green primary; picked **Indigo** from four validated
   candidates (light #4338ca / dark #8f8af1, contrast-checked both modes). Chart palette

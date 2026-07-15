@@ -4,14 +4,169 @@
   gap: var(--space-4);
 }
 
-.netCard {
+/* Prominent quick-add — the primary home action. */
+.addButton {
+  min-height: 60px;
+  border-radius: var(--radius);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border: 1px solid var(--color-primary);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* This-month card. */
+.card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-5) var(--space-4);
+  gap: var(--space-2);
+  padding: var(--space-4);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cardLabel {
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.link {
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.spentValue {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.spentOf {
+  font-size: var(--text-lg);
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.cardMeta {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.overText {
+  color: var(--color-danger);
+}
+
+.track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--color-surface-alt);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-primary);
+}
+
+.fillOver {
+  background: var(--color-danger);
+}
+
+/* Small labelled blocks (top spending, recent). */
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.blockHeading {
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.miniList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.miniRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.recentWho {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.miniRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  white-space: nowrap;
+}
+
+.recentDate {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.miniAmount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.income {
+  color: var(--color-primary);
+}
+
+.muted {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+/* Compact net-worth line — one tap to the trend. */
+.netLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  color: var(--color-text);
 }
 
 .netLabel {
@@ -22,21 +177,12 @@
 }
 
 .netValue {
-  font-size: 2.4rem;
   font-weight: 700;
-  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 
-.netEmpty {
-  font-size: var(--text-lg);
-  color: var(--color-text-muted);
-}
-
-.netMeta {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
+/* Callouts / nudges reuse the warning palette. */
+.callout,
 .nudge {
   display: flex;
   flex-direction: column;
@@ -50,26 +196,12 @@
   cursor: pointer;
 }
 
+.calloutTitle,
 .nudgeTitle {
   font-weight: 700;
 }
 
+.calloutText,
 .nudgeText {
   font-size: var(--text-sm);
-}
-
-.links {
-  display: flex;
-  gap: var(--space-3);
-}
-
-.linkCard {
-  flex: 1;
-  min-height: 56px;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  color: var(--color-text);
-  cursor: pointer;
 }

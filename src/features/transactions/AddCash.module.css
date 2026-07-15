@@ -1,0 +1,40 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+
+.muted {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Expense / income segmented toggle — big thumb targets. */
+.toggle {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.toggleBtn {
+  flex: 1;
+  min-height: 52px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-base);
+  cursor: pointer;
+}
+
+.toggleActive {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary);
+  font-weight: 600;
+}

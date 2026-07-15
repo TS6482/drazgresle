@@ -198,16 +198,26 @@ src/
 Data flow: store loads JSON via `api/github.ts` → components read from store → mutations go
 through store actions that write back via the API (optimistic UI, rollback on failure).
 
-## 6. CSV import & classification
+## 6. Statement import (PDF) & classification
 
-Banks: **Air Bank** and **Raiffeisenbank CZ** — one account each, ~2 files per month. Czech
-bank exports are typically `windows-1250`-encoded and semicolon-delimited — decode with
-`TextDecoder('windows-1250')` before PapaParse, and auto-detect which bank a file is from by
-its header row.
+Banks: **Air Bank** and **Raiffeisenbank CZ** — one account each, ~2 statements per month.
+**Both banks offer statements only as PDF** (verified by the user in both mobile apps and
+desktop internet banking, 2026-07-15), so the importer parses PDFs client-side:
 
-> **Implementation gate:** parsers are written against *real anonymized sample exports* the
-> user provides at Phase 2 start (a few rows each, numbers/names scrubbed). Do not guess column
-> layouts from memory. Samples live outside the repo and are never committed.
+- `pdfjs-dist` (Mozilla pdf.js) extracts text items with coordinates; per-bank parsers
+  reconstruct transaction rows from the layout. Dependency approved 2026-07-15 for exactly
+  this purpose; it must be **lazy-loaded** (dynamic import) so the main bundle stays small —
+  the library loads only when the user actually imports a statement.
+- Everything runs in the browser — statement PDFs never leave the device.
+- PDF statements carry the starting/ending balance — the source for the Air Bank
+  statement-driven snapshot balance (§4).
+- CSV support can be added later if a bank ever exposes it; PapaParse stays out of the
+  dependency list until then.
+
+> **Implementation gate:** parsers are written against *real sample statement PDFs* the user
+> provides at Phase 2b start (PDFs are impractical for a user to anonymize — they are read
+> locally to build the parser, live outside the repo, and are never committed). Do not guess
+> PDF layouts from memory.
 
 Import wizard flow:
 

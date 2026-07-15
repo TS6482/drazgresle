@@ -1,0 +1,266 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Month picker: prev / label / next. */
+.monthNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.navBtn {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-lg);
+  cursor: pointer;
+}
+
+.monthLabel {
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+/* Income / spent / net header. */
+.summary {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.summaryItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.summaryLabel {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.summaryValue {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.income {
+  color: var(--color-primary);
+}
+
+.actionsRow {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.primaryBtn {
+  flex: 1;
+  min-height: 44px;
+  border-radius: var(--radius);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border: 1px solid var(--color-primary);
+  cursor: pointer;
+}
+
+.secondaryBtn {
+  flex: 1;
+  min-height: 44px;
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+}
+
+.muted {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.blockHeading {
+  margin: 0;
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+/* --- budget vs actual --- */
+.budgetList,
+.txList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.budgetRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.budgetTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.budgetName {
+  font-weight: 600;
+}
+
+.budgetFigures {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.budgetOf {
+  color: var(--color-text-muted);
+}
+
+.track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-surface-alt);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-primary);
+}
+
+.fillOver {
+  background: var(--color-danger);
+}
+
+.overText {
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- transaction rows --- */
+.txItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.txRow {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-text);
+}
+
+.txRow[aria-expanded='true'] {
+  border-color: var(--color-primary);
+}
+
+.txMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.txWho {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.txMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.txDate {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.chip {
+  font-size: var(--text-sm);
+  padding: 1px var(--space-2);
+  border-radius: 999px;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.chipNone {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+
+.txAmount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  margin-top: calc(-1 * var(--space-1));
+  border: 1px solid var(--color-primary);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--color-surface);
+}
+
+.editorLabel {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.deleteBtn {
+  min-height: 44px;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
+  cursor: pointer;
+}

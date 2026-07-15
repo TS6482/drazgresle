@@ -1,11 +1,15 @@
 import { useEffect } from 'react';
 import { useSessionStore } from './store/session';
 import { useDataStore } from './store/data';
-import { useHashRoute } from './router/useHashRoute';
+import { navigate, useHashRoute } from './router/useHashRoute';
 import { TokenEntry } from './features/auth/TokenEntry';
 import { Home } from './features/home/Home';
 import { NetWorth } from './features/networth/NetWorth';
 import { Accounts } from './features/accounts/Accounts';
+import { MonthView } from './features/transactions/MonthView';
+import { AddCash } from './features/transactions/AddCash';
+import { Budgets } from './features/budgets/Budgets';
+import { Settings } from './features/settings/Settings';
 import { ReadOnlyBanner } from './components/ReadOnlyBanner';
 import { TabBar } from './components/TabBar';
 import shell from './styles/app.module.css';
@@ -54,6 +58,14 @@ function ConnectedApp() {
         <span className={shell.brand}>Dražgrešle</span>
         <div className={shell.headerRight}>
           {username && <span className={shell.user}>{username}</span>}
+          <button
+            className={shell.iconButton}
+            type="button"
+            aria-label="Settings"
+            onClick={() => navigate('/settings')}
+          >
+            ⚙
+          </button>
           <button className={shell.linkButton} type="button" onClick={handleDisconnect}>
             Disconnect
           </button>
@@ -73,6 +85,14 @@ function ConnectedApp() {
 
 function renderRoute(route: string) {
   switch (route) {
+    case '/month':
+      return <MonthView />;
+    case '/add':
+      return <AddCash />;
+    case '/budgets':
+      return <Budgets />;
+    case '/settings':
+      return <Settings />;
     case '/networth':
       return <NetWorth />;
     case '/accounts':

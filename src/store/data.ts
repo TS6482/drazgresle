@@ -7,22 +7,55 @@ import {
 } from '../api/github';
 import type { GithubClient } from '../api/github';
 import { useSessionStore } from './session';
+import { monthKey } from '../engine/summarize';
+import { todayIso } from '../utils/dates';
 import type {
   Account,
   AccountsFile,
+  BudgetsFile,
+  CategoriesFile,
+  Category,
+  CategoryBudget,
   IsoDate,
+  MonthFile,
+  Person,
+  SettingsFile,
   Snapshot,
   SnapshotsFile,
+  Transaction,
 } from '../types/data';
 
-// Paths inside the private data repo (see docs/ARCHITECTURE.md §4). Both files are
-// seeded in the repo with empty arrays, so a normal load finds them; we still
-// tolerate a 404 by treating the file as empty.
+// Paths inside the private data repo (see docs/ARCHITECTURE.md §4). The seeded
+// files exist with empty shapes, so a normal load finds them; we still tolerate
+// a 404 by treating the file as empty. Transaction files are sharded per month.
 const ACCOUNTS_PATH = 'data/accounts.json';
 const SNAPSHOTS_PATH = 'data/snapshots.json';
+const CATEGORIES_PATH = 'data/categories.json';
+const BUDGETS_PATH = 'data/budgets.json';
+const SETTINGS_PATH = 'data/settings.json';
+
+function monthPath(month: string): string {
+  return `data/transactions/${month}.json`;
+}
+
+/** Any of the JSON files this store reads/writes. */
+type DataFile =
+  | AccountsFile
+  | SnapshotsFile
+  | CategoriesFile
+  | BudgetsFile
+  | SettingsFile
+  | MonthFile;
 
 function sortSnapshots(snapshots: Snapshot[]): Snapshot[] {
   return [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Transactions kept sorted by date then id, so lists render deterministically. */
+function sortTransactions(transactions: Transaction[]): Transaction[] {
+  return [...transactions].sort(
+    (a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id),
+  );
 }
 
 /** Build a client from the current session token, or null if not connected. */
@@ -69,6 +102,58 @@ function mergeDeleteSnapshot(date: IsoDate) {
   });
 }
 
+/** Upsert each given category by id onto the current file, keeping others. */
+function mergeCategories(next: Category[]) {
+  return (current: CategoriesFile | null): CategoriesFile => {
+    const byId = new Map<string, Category>(
+      (current?.categories ?? []).map((c) => [c.id, c]),
+    );
+    for (const category of next) {
+      byId.set(category.id, category);
+    }
+    return { schemaVersion: 1, categories: [...byId.values()] };
+  };
+}
+
+/**
+ * Overlay per-category budget entries. A `null` value removes that category's
+ * budget; any other value replaces it. Other categories survive untouched.
+ */
+function mergeBudgets(next: Record<string, CategoryBudget | null>) {
+  return (current: BudgetsFile | null): BudgetsFile => {
+    const budgets: Record<string, CategoryBudget> = { ...(current?.budgets ?? {}) };
+    for (const [id, entry] of Object.entries(next)) {
+      if (entry === null) {
+        delete budgets[id];
+      } else {
+        budgets[id] = entry;
+      }
+    }
+    return { schemaVersion: 1, budgets };
+  };
+}
+
+/** Replace the settings file wholesale (rarely edited concurrently). */
+function mergeSettings(settings: SettingsFile) {
+  return (): SettingsFile => settings;
+}
+
+/** Upsert one transaction by id into its month file, kept sorted. */
+function mergeTransaction(transaction: Transaction) {
+  return (current: MonthFile | null): MonthFile => {
+    const others = (current?.transactions ?? []).filter((t) => t.id !== transaction.id);
+    return { schemaVersion: 1, transactions: sortTransactions([...others, transaction]) };
+  };
+}
+
+/** Remove the transaction with `id` from its month file, kept sorted. */
+function mergeDeleteTransaction(id: string) {
+  return (current: MonthFile | null): MonthFile => ({
+    schemaVersion: 1,
+    transactions: sortTransactions((current?.transactions ?? []).filter((t) => t.id !== id)),
+  });
+}
+
 function describeError(err: unknown): string {
   if (err instanceof GithubAuthError) {
     return 'GitHub rejected the request (your token may have expired). Reconnect to continue.';
@@ -82,28 +167,77 @@ function describeError(err: unknown): string {
 interface DataState {
   accounts: Account[];
   snapshots: Snapshot[];
+  categories: Category[];
+  budgets: Record<string, CategoryBudget>;
+  persons: Person[];
+  projectionDefaults: Record<string, number>;
+  /** Cache of loaded month files, keyed by `'YYYY-MM'`. */
+  months: Record<string, Transaction[]>;
+  /** `'YYYY-MM'` for today, resolved at load time. */
+  currentMonthKey: string;
+
   accountsSha: string | null;
   snapshotsSha: string | null;
+  categoriesSha: string | null;
+  budgetsSha: string | null;
+  settingsSha: string | null;
+  monthShas: Record<string, string | null>;
+  monthsLoaded: Record<string, boolean>;
+
   loading: boolean;
   loaded: boolean;
   saving: boolean;
   error: string | null;
 
-  /** Fetch both files. Called once after the session connects. */
+  /** Fetch every top-level file + the current month. Called once on connect. */
   load: () => Promise<void>;
+  /** Load a specific month's transactions on demand (cached). */
+  loadMonth: (month: string) => Promise<void>;
   /** Upsert-by-id the given accounts and persist. Returns false on failure. */
   saveAccounts: (accounts: Account[]) => Promise<boolean>;
   /** Upsert one snapshot by date and persist. Returns false on failure. */
   saveSnapshot: (snapshot: Snapshot) => Promise<boolean>;
   /** Delete the snapshot with the given date and persist. */
   deleteSnapshot: (date: IsoDate) => Promise<boolean>;
+  /** Upsert-by-id the given categories and persist. */
+  saveCategories: (categories: Category[]) => Promise<boolean>;
+  /** Overlay per-category budgets (null removes a category) and persist. */
+  saveBudgets: (next: Record<string, CategoryBudget | null>) => Promise<boolean>;
+  /** Persist household settings (persons + projection defaults). */
+  saveSettings: (persons: Person[], projectionDefaults: Record<string, number>) => Promise<boolean>;
+  /** Upsert one transaction into its month file (derived from its date). */
+  saveTransaction: (transaction: Transaction) => Promise<boolean>;
+  /** Remove a transaction by id from the given month. */
+  deleteTransaction: (month: string, id: string) => Promise<boolean>;
   /** Clear all cached data (on disconnect). */
   reset: () => void;
 }
 
+const EMPTY_STATE = {
+  accounts: [] as Account[],
+  snapshots: [] as Snapshot[],
+  categories: [] as Category[],
+  budgets: {} as Record<string, CategoryBudget>,
+  persons: [] as Person[],
+  projectionDefaults: {} as Record<string, number>,
+  months: {} as Record<string, Transaction[]>,
+  currentMonthKey: monthKey(todayIso()),
+  accountsSha: null,
+  snapshotsSha: null,
+  categoriesSha: null,
+  budgetsSha: null,
+  settingsSha: null,
+  monthShas: {} as Record<string, string | null>,
+  monthsLoaded: {} as Record<string, boolean>,
+  loading: false,
+  loaded: false,
+  saving: false,
+  error: null,
+};
+
 export const useDataStore = create<DataState>((set, get) => {
   /** Shared write path: PUT with a structured merge, mapping failures to state. */
-  async function write<T extends AccountsFile | SnapshotsFile>(
+  async function write<T extends DataFile>(
     path: string,
     sha: string | null,
     localCurrent: T,
@@ -136,36 +270,66 @@ export const useDataStore = create<DataState>((set, get) => {
   }
 
   return {
-    accounts: [],
-    snapshots: [],
-    accountsSha: null,
-    snapshotsSha: null,
-    loading: false,
-    loaded: false,
-    saving: false,
-    error: null,
+    ...EMPTY_STATE,
 
     load: async () => {
       const client = activeClient();
       if (!client) {
         return;
       }
+      const mk = monthKey(todayIso());
       set({ loading: true, error: null });
       try {
-        const [accountsFile, snapshotsFile] = await Promise.all([
-          client.getJsonFile<AccountsFile>(ACCOUNTS_PATH),
-          client.getJsonFile<SnapshotsFile>(SNAPSHOTS_PATH),
-        ]);
+        const [accountsFile, snapshotsFile, categoriesFile, budgetsFile, settingsFile, monthFile] =
+          await Promise.all([
+            client.getJsonFile<AccountsFile>(ACCOUNTS_PATH),
+            client.getJsonFile<SnapshotsFile>(SNAPSHOTS_PATH),
+            client.getJsonFile<CategoriesFile>(CATEGORIES_PATH),
+            client.getJsonFile<BudgetsFile>(BUDGETS_PATH),
+            client.getJsonFile<SettingsFile>(SETTINGS_PATH),
+            client.getJsonFile<MonthFile>(monthPath(mk)),
+          ]);
         set({
           accounts: accountsFile?.data.accounts ?? [],
           accountsSha: accountsFile?.sha ?? null,
           snapshots: sortSnapshots(snapshotsFile?.data.snapshots ?? []),
           snapshotsSha: snapshotsFile?.sha ?? null,
+          categories: categoriesFile?.data.categories ?? [],
+          categoriesSha: categoriesFile?.sha ?? null,
+          budgets: budgetsFile?.data.budgets ?? {},
+          budgetsSha: budgetsFile?.sha ?? null,
+          persons: settingsFile?.data.persons ?? [],
+          projectionDefaults: settingsFile?.data.projectionDefaults ?? {},
+          settingsSha: settingsFile?.sha ?? null,
+          currentMonthKey: mk,
+          months: { [mk]: sortTransactions(monthFile?.data.transactions ?? []) },
+          monthShas: { [mk]: monthFile?.sha ?? null },
+          monthsLoaded: { [mk]: true },
           loading: false,
           loaded: true,
         });
       } catch (err) {
         set({ loading: false, error: describeError(err) });
+      }
+    },
+
+    loadMonth: async (month) => {
+      if (get().monthsLoaded[month]) {
+        return;
+      }
+      const client = activeClient();
+      if (!client) {
+        return;
+      }
+      try {
+        const file = await client.getJsonFile<MonthFile>(monthPath(month));
+        set((state) => ({
+          months: { ...state.months, [month]: sortTransactions(file?.data.transactions ?? []) },
+          monthShas: { ...state.monthShas, [month]: file?.sha ?? null },
+          monthsLoaded: { ...state.monthsLoaded, [month]: true },
+        }));
+      } catch (err) {
+        set({ error: describeError(err) });
       }
     },
 
@@ -217,17 +381,115 @@ export const useDataStore = create<DataState>((set, get) => {
       return true;
     },
 
-    reset: () => {
+    saveCategories: async (next) => {
+      const localCurrent: CategoriesFile = { schemaVersion: 1, categories: get().categories };
+      const result = await write(
+        CATEGORIES_PATH,
+        get().categoriesSha,
+        localCurrent,
+        mergeCategories(next),
+        'Update categories',
+      );
+      if (!result) {
+        return false;
+      }
+      set({ categories: result.data.categories, categoriesSha: result.sha });
+      return true;
+    },
+
+    saveBudgets: async (next) => {
+      const localCurrent: BudgetsFile = { schemaVersion: 1, budgets: get().budgets };
+      const result = await write(
+        BUDGETS_PATH,
+        get().budgetsSha,
+        localCurrent,
+        mergeBudgets(next),
+        'Update budgets',
+      );
+      if (!result) {
+        return false;
+      }
+      set({ budgets: result.data.budgets, budgetsSha: result.sha });
+      return true;
+    },
+
+    saveSettings: async (persons, projectionDefaults) => {
+      const settings: SettingsFile = { schemaVersion: 1, persons, projectionDefaults };
+      const result = await write(
+        SETTINGS_PATH,
+        get().settingsSha,
+        settings,
+        mergeSettings(settings),
+        'Update settings',
+      );
+      if (!result) {
+        return false;
+      }
       set({
-        accounts: [],
-        snapshots: [],
-        accountsSha: null,
-        snapshotsSha: null,
-        loading: false,
-        loaded: false,
-        saving: false,
-        error: null,
+        persons: result.data.persons,
+        projectionDefaults: result.data.projectionDefaults,
+        settingsSha: result.sha,
       });
+      return true;
+    },
+
+    saveTransaction: async (transaction) => {
+      const mk = monthKey(transaction.date);
+      // Existing month files must PUT with their sha; load the month first so we
+      // hold it (a first-write month simply has a null sha and gets created).
+      if (!get().monthsLoaded[mk]) {
+        await get().loadMonth(mk);
+      }
+      const localCurrent: MonthFile = {
+        schemaVersion: 1,
+        transactions: get().months[mk] ?? [],
+      };
+      const result = await write(
+        monthPath(mk),
+        get().monthShas[mk] ?? null,
+        localCurrent,
+        mergeTransaction(transaction),
+        `Save transaction ${transaction.date}`,
+      );
+      if (!result) {
+        return false;
+      }
+      set((state) => ({
+        months: { ...state.months, [mk]: result.data.transactions },
+        monthShas: { ...state.monthShas, [mk]: result.sha },
+        monthsLoaded: { ...state.monthsLoaded, [mk]: true },
+      }));
+      return true;
+    },
+
+    deleteTransaction: async (month, id) => {
+      if (!get().monthsLoaded[month]) {
+        await get().loadMonth(month);
+      }
+      const localCurrent: MonthFile = {
+        schemaVersion: 1,
+        transactions: get().months[month] ?? [],
+      };
+      const result = await write(
+        monthPath(month),
+        get().monthShas[month] ?? null,
+        localCurrent,
+        mergeDeleteTransaction(id),
+        `Delete transaction ${id}`,
+      );
+      if (!result) {
+        return false;
+      }
+      set((state) => ({
+        months: { ...state.months, [month]: result.data.transactions },
+        monthShas: { ...state.monthShas, [month]: result.sha },
+        monthsLoaded: { ...state.monthsLoaded, [month]: true },
+      }));
+      return true;
+    },
+
+    reset: () => {
+      set({ ...EMPTY_STATE, currentMonthKey: monthKey(todayIso()) });
     },
   };
 });
