@@ -54,10 +54,30 @@
 }
 
 .catRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* The main line: name, group, action — the grid the row used to be. */
+.catMain {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
   gap: var(--space-2);
   align-items: center;
+}
+
+/* The optional spending-area line beneath, shown for expense categories. */
+.catArea {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.catAreaLabel {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
 }
 
 .catInactive {
@@ -96,7 +116,7 @@
 
 /* On narrow phones let the category rows stack so controls never overlap. */
 @media (max-width: 480px) {
-  .catRow,
+  .catMain,
   .addRow {
     grid-template-columns: 1fr;
   }

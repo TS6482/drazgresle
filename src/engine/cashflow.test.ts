@@ -4,7 +4,7 @@ import type { Category, Transaction } from '../types/data';
 
 const categories: Category[] = [
   { id: 'salary', name: 'Salary', group: 'income' },
-  { id: 'groceries', name: 'Groceries', group: 'variable' },
+  { id: 'groceries', name: 'Groceries', group: 'expense' },
 ];
 
 let seq = 0;

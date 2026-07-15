@@ -124,6 +124,54 @@
   gap: var(--space-2);
 }
 
+/* --- spending grouped by area --- */
+.areaList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.areaGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Area accordion header: a thumb-sized card button summarising the area. */
+.areaHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.areaHeader[aria-expanded='true'] {
+  border-color: var(--color-primary);
+}
+
+/* Slightly heavier than a category name to set the area above its categories. */
+.areaName {
+  font-weight: 700;
+}
+
+/* The category rows revealed under an area — indented to show nesting. */
+.areaCategories {
+  padding-left: var(--space-3);
+}
+
 .budgetRow {
   display: flex;
   flex-direction: column;

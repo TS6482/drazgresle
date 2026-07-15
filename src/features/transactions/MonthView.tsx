@@ -10,7 +10,8 @@ import {
 } from '../../engine/classify';
 import { formatKc } from '../../engine/money';
 import { cashFlowForYear } from '../../engine/cashflow';
-import { MonthDonut } from './MonthDonut';
+import { SPENDING_AREAS, areaOf } from '../../engine/areas';
+import { MonthMeter } from './MonthMeter';
 import { CashFlowChart } from './CashFlowChart';
 import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
@@ -60,6 +61,8 @@ export function MonthView() {
   const [noteDraft, setNoteDraft] = useState<{ txId: string; value: string } | null>(null);
   // Category drill-downs open in budget-vs-actual (several may be open at once).
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
+  // Spending-area accordions in the spending list — collapsed by default.
+  const [openAreas, setOpenAreas] = useState<Record<string, boolean>>({});
   // The full transaction list is collapsed by default; unclassified stay pinned.
   const [showAll, setShowAll] = useState(false);
 
@@ -86,6 +89,7 @@ export function MonthView() {
   function goToMonth(delta: number) {
     setAutoResult(null);
     setOpenCategories({});
+    setOpenAreas({});
     setShowAll(false);
     setPending(null);
     setNoteDraft(null);
@@ -94,6 +98,10 @@ export function MonthView() {
 
   function toggleCategory(categoryId: string) {
     setOpenCategories((prev) => ({ ...prev, [categoryId]: !(prev[categoryId] ?? false) }));
+  }
+
+  function toggleArea(areaId: string) {
+    setOpenAreas((prev) => ({ ...prev, [areaId]: !(prev[areaId] ?? false) }));
   }
 
   const transactions = useMemo(() => months[viewedMonth] ?? [], [months, viewedMonth]);
@@ -127,6 +135,23 @@ export function MonthView() {
   // engine still returns every row in byCategory (filtering is display-only).
   const spendingRows = summary.byCategory.filter((row) => isExpenseGroup(row.group));
   const savingRows = summary.byCategory.filter((row) => isSavingsGroup(row.group));
+
+  // Group the spending rows under their spending areas (SPENDING_AREAS order),
+  // keeping only areas that have at least one expense category with spend or a
+  // budget. Each area header carries the subtotal spend and, when any category
+  // in it is budgeted, the summed area budget with the same over/under treatment
+  // as a category row.
+  const areaGroups = SPENDING_AREAS.map((area) => {
+    const rows = spendingRows.filter((row) => {
+      const category = byId.get(row.categoryId);
+      return (category ? areaOf(category) : 'others') === area.id;
+    });
+    const spend = rows.reduce((sum, row) => sum + row.spendHalere, 0);
+    const budgetedRows = rows.filter((row) => row.budgetHalere !== null);
+    const hasBudget = budgetedRows.length > 0;
+    const budget = budgetedRows.reduce((sum, row) => sum + (row.budgetHalere ?? 0), 0);
+    return { area, rows, spend, hasBudget, budget, over: hasBudget && spend > budget };
+  }).filter((group) => group.rows.length > 0);
 
   function categoryName(categoryId: string | null): string {
     if (categoryId === null) {
@@ -523,7 +548,7 @@ export function MonthView() {
 
       <CashFlowChart series={cashFlow} />
 
-      <MonthDonut summary={summary} />
+      <MonthMeter summary={summary} categories={categories} />
 
       <div className={styles.actionsRow}>
         <button type="button" className={styles.secondaryBtn} onClick={() => navigate('/import')}>
@@ -579,8 +604,57 @@ export function MonthView() {
           {spendingRows.length > 0 && (
             <>
               <h3 className={styles.subHeading}>Spending</h3>
-              <ul className={styles.budgetList}>
-                {spendingRows.map((row) => renderBudgetRow(row, false))}
+              <ul className={styles.areaList}>
+                {areaGroups.map((group) => {
+                  const open = openAreas[group.area.id] ?? false;
+                  const fraction = group.hasBudget
+                    ? progressFraction(group.spend, group.budget)
+                    : 0;
+                  return (
+                    <li key={group.area.id} className={styles.areaGroup}>
+                      <button
+                        type="button"
+                        className={styles.areaHeader}
+                        onClick={() => toggleArea(group.area.id)}
+                        aria-expanded={open}
+                      >
+                        <span className={styles.budgetTop}>
+                          <span className={styles.areaName}>{group.area.name}</span>
+                          <span className={styles.budgetFigures}>
+                            {formatKc(group.spend)}
+                            {group.hasBudget && (
+                              <span className={styles.budgetOf}> / {formatKc(group.budget)}</span>
+                            )}
+                            <span
+                              className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}
+                              aria-hidden="true"
+                            >
+                              ›
+                            </span>
+                          </span>
+                        </span>
+                        {group.hasBudget && (
+                          <span className={styles.track}>
+                            <span
+                              className={`${styles.fill} ${group.over ? styles.fillOver : ''}`}
+                              style={{ width: `${fraction * 100}%` }}
+                            />
+                          </span>
+                        )}
+                        {group.over && (
+                          <span className={styles.overText}>
+                            Over by {formatKc(group.spend - group.budget)}
+                          </span>
+                        )}
+                      </button>
+                      {open && (
+                        <ul className={`${styles.budgetList} ${styles.areaCategories}`}>
+                          {group.rows.map((row) => renderBudgetRow(row, false))}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </>
           )}

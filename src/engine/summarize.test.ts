@@ -11,8 +11,8 @@ import type { Category, Transaction } from '../types/data';
 
 const categories: Category[] = [
   { id: 'salary', name: 'Salary', group: 'income' },
-  { id: 'groceries', name: 'Groceries', group: 'variable' },
-  { id: 'rent', name: 'Rent', group: 'fixed' },
+  { id: 'groceries', name: 'Groceries', group: 'expense' },
+  { id: 'rent', name: 'Rent', group: 'expense' },
   { id: 'save', name: 'Savings', group: 'savings' },
   { id: 'transfer', name: 'Transfer', group: 'transfer' },
 ];
@@ -60,7 +60,9 @@ describe('budgetFor', () => {
 });
 
 describe('isExpenseGroup / isSavingsGroup', () => {
-  it('spending groups are fixed and variable only', () => {
+  it('the expense group counts as spending, plus its legacy fixed/variable aliases', () => {
+    expect(isExpenseGroup('expense')).toBe(true);
+    // Legacy groups from before fixed+variable were merged still count.
     expect(isExpenseGroup('fixed')).toBe(true);
     expect(isExpenseGroup('variable')).toBe(true);
     expect(isExpenseGroup('savings')).toBe(false);
@@ -71,7 +73,7 @@ describe('isExpenseGroup / isSavingsGroup', () => {
 
   it('the savings group stands alone', () => {
     expect(isSavingsGroup('savings')).toBe(true);
-    expect(isSavingsGroup('fixed')).toBe(false);
+    expect(isSavingsGroup('expense')).toBe(false);
     expect(isSavingsGroup('income')).toBe(false);
     expect(isSavingsGroup(undefined)).toBe(false);
   });
@@ -276,7 +278,36 @@ describe('summarizeMonth', () => {
     expect(salary).toBeDefined();
     expect(salary?.group).toBe('income');
     expect(salary?.netHalere).toBe(5_000_000);
-    expect(s.byCategory.find((c) => c.categoryId === 'groceries')?.group).toBe('variable');
+    expect(s.byCategory.find((c) => c.categoryId === 'groceries')?.group).toBe('expense');
+  });
+
+  it('counts legacy fixed/variable categories as spending (data-repo not yet migrated)', () => {
+    // Old categories.json still stores fixed/variable; those are the narrowed
+    // union's legacy values and must keep landing in the Spent total, not
+    // leftover. `group` goes through a string cast because CategoryGroup no
+    // longer names them.
+    const g = (group: string): Category['group'] => group as Category['group'];
+    const legacy: Category[] = [
+      { id: 'salary', name: 'Salary', group: 'income' },
+      { id: 'rent', name: 'Rent', group: g('fixed') },
+      { id: 'groceries', name: 'Groceries', group: g('variable') },
+    ];
+    const s = summarizeMonth(
+      [
+        tx({ amountHalere: 5_000_000, categoryId: 'salary' }),
+        tx({ amountHalere: -1_500_000, categoryId: 'rent' }),
+        tx({ amountHalere: -300_000, categoryId: 'groceries' }),
+      ],
+      legacy,
+      noBudgets,
+      '2026-07',
+    );
+    expect(s.spendHalere).toBe(1_800_000);
+    expect(s.savedHalere).toBe(0);
+    expect(s.leftoverHalere).toBe(3_200_000);
+    const rent = s.byCategory.find((c) => c.categoryId === 'rent');
+    expect(rent?.spendHalere).toBe(1_500_000);
+    expect(rent?.overBudget).toBe(false);
   });
 
   it('leaves group undefined for a transaction with an unknown category id', () => {

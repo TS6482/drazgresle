@@ -2,18 +2,20 @@ import { useState } from 'react';
 import type { Category, CategoryGroup, Person, PersonId } from '../../types/data';
 import { parseKcInput } from '../../engine/money';
 import { parsePercentInput } from '../../engine/percent';
-import { TRANSFER_CATEGORY_ID } from '../../engine/summarize';
+import { isExpenseGroup, TRANSFER_CATEGORY_ID } from '../../engine/summarize';
+import { SPENDING_AREAS } from '../../engine/areas';
 import { useDataStore } from '../../store/data';
 import { newId } from '../../utils/id';
-import { CATEGORY_GROUP_LABELS } from '../shared/labels';
+import { CATEGORY_GROUP_LABELS, normalizeCategoryGroup } from '../shared/labels';
 import { MoneyInput } from '../shared/MoneyInput';
 import forms from '../shared/forms.module.css';
 import styles from './Settings.module.css';
 
 const PERSON_IDS: PersonId[] = ['A', 'B'];
 
-/** Groups a user may assign — the reserved transfer group is never offered. */
-const ASSIGNABLE_GROUPS: CategoryGroup[] = ['income', 'fixed', 'variable', 'savings'];
+/** Groups a user may assign — income / expense / savings. The reserved transfer
+ *  group and the legacy fixed/variable groups are never offered. */
+const ASSIGNABLE_GROUPS: CategoryGroup[] = ['income', 'expense', 'savings'];
 
 interface PersonDraft {
   id: PersonId;
@@ -55,7 +57,7 @@ export function Settings() {
   const [people, setPeople] = useState<PersonDraft[]>(() => buildPeople(storePersons));
   const [drafts, setDrafts] = useState<Category[]>(() => categories.map((c) => ({ ...c })));
   const [newName, setNewName] = useState('');
-  const [newGroup, setNewGroup] = useState<CategoryGroup>('variable');
+  const [newGroup, setNewGroup] = useState<CategoryGroup>('expense');
 
   // Reseed (during render, React's recommended pattern) when the stored data
   // changes — e.g. after the initial load resolves or a save completes.
@@ -192,39 +194,65 @@ export function Settings() {
           {drafts.map((cat) => {
             const reserved = isReservedTransfer(cat);
             const inactive = cat.active === false;
+            // Legacy fixed/variable categories display as "Expense"; their
+            // stored group is left untouched unless the user changes it here.
+            const groupValue = reserved ? cat.group : normalizeCategoryGroup(cat.group);
+            // Spending areas apply only to expense categories (incl. legacy).
+            const showArea = isExpenseGroup(cat.group);
             return (
               <li key={cat.id} className={`${styles.catRow} ${inactive ? styles.catInactive : ''}`}>
-                <input
-                  className={forms.input}
-                  type="text"
-                  aria-label="Category name"
-                  value={cat.name}
-                  disabled={reserved}
-                  onChange={(e) => updateDraft(cat.id, { name: e.target.value })}
-                />
-                <select
-                  className={forms.select}
-                  aria-label="Category group"
-                  value={cat.group}
-                  disabled={reserved}
-                  onChange={(e) => updateDraft(cat.id, { group: e.target.value as CategoryGroup })}
-                >
-                  {(reserved ? [cat.group] : ASSIGNABLE_GROUPS).map((g) => (
-                    <option key={g} value={g}>
-                      {CATEGORY_GROUP_LABELS[g]}
-                    </option>
-                  ))}
-                </select>
-                {reserved ? (
-                  <span className={styles.reserved}>Reserved</span>
-                ) : (
-                  <button
-                    type="button"
-                    className={styles.toggleBtn}
-                    onClick={() => toggleActive(cat.id)}
+                <div className={styles.catMain}>
+                  <input
+                    className={forms.input}
+                    type="text"
+                    aria-label="Category name"
+                    value={cat.name}
+                    disabled={reserved}
+                    onChange={(e) => updateDraft(cat.id, { name: e.target.value })}
+                  />
+                  <select
+                    className={forms.select}
+                    aria-label="Category group"
+                    value={groupValue}
+                    disabled={reserved}
+                    onChange={(e) => updateDraft(cat.id, { group: e.target.value as CategoryGroup })}
                   >
-                    {inactive ? 'Reactivate' : 'Deactivate'}
-                  </button>
+                    {(reserved ? [cat.group] : ASSIGNABLE_GROUPS).map((g) => (
+                      <option key={g} value={g}>
+                        {CATEGORY_GROUP_LABELS[g]}
+                      </option>
+                    ))}
+                  </select>
+                  {reserved ? (
+                    <span className={styles.reserved}>Reserved</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.toggleBtn}
+                      onClick={() => toggleActive(cat.id)}
+                    >
+                      {inactive ? 'Reactivate' : 'Deactivate'}
+                    </button>
+                  )}
+                </div>
+                {showArea && (
+                  <div className={styles.catArea}>
+                    <label className={styles.catAreaLabel} htmlFor={`area-${cat.id}`}>
+                      Spending area
+                    </label>
+                    <select
+                      id={`area-${cat.id}`}
+                      className={forms.select}
+                      value={cat.area ?? 'others'}
+                      onChange={(e) => updateDraft(cat.id, { area: e.target.value })}
+                    >
+                      {SPENDING_AREAS.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 )}
               </li>
             );

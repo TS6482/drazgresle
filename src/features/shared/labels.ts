@@ -75,17 +75,29 @@ export const LIABILITY_SERIES: SeriesMeta = {
 /** Category-group labels used by the pickers, budgets, and settings screens. */
 export const CATEGORY_GROUP_LABELS: Record<CategoryGroup, string> = {
   income: 'Income',
-  fixed: 'Fixed expenses',
-  variable: 'Variable expenses',
+  expense: 'Expense',
   savings: 'Savings',
   transfer: 'Transfer',
 };
 
-/** Order category groups are offered/grouped in (income first, transfer last). */
-export const CATEGORY_GROUP_ORDER: CategoryGroup[] = [
-  'income',
-  'fixed',
-  'variable',
-  'savings',
-  'transfer',
-];
+/**
+ * Order the user-facing category groups are offered/grouped in: income, then
+ * expense, then savings. `transfer` is reserved (the locked internal-transfer
+ * category) and is never offered as a group a user can assign, so it is not
+ * listed here.
+ */
+export const CATEGORY_GROUP_ORDER: CategoryGroup[] = ['income', 'expense', 'savings'];
+
+/**
+ * Map a possibly-legacy stored group to a current user-facing `CategoryGroup`:
+ * the pre-merge `fixed`/`variable` both become `expense`. Any unrecognized value
+ * also falls back to `expense` (the only spending bucket left). Used so pickers
+ * and Settings display legacy categories under the right group without rewriting
+ * their stored value.
+ */
+export function normalizeCategoryGroup(group: string | undefined): CategoryGroup {
+  if (group === 'income' || group === 'savings' || group === 'transfer') {
+    return group;
+  }
+  return 'expense';
+}

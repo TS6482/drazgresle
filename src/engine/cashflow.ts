@@ -11,7 +11,7 @@ export interface CashFlowPoint {
   /** `'YYYY-MM'`. */
   month: string;
   incomeHalere: number;
-  /** Spending (fixed + variable), matching the app's "Spent" total. */
+  /** Spending (expense-group categories), matching the app's "Spent" total. */
   expensesHalere: number;
 }
 

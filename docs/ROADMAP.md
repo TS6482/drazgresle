@@ -109,6 +109,16 @@ import.
 
 ## Decision log
 
+- 2026-07-15 — Category system overhaul (user): (1) engine groups simplified to
+  **income / expense / savings** (+ reserved transfer) — `fixed`+`variable` merged into
+  `expense`, legacy values tolerated in code, data migrated. (2) New **overarching spending
+  areas** layer — Essential Living, Food, Entertainment, **Kids (own group)**, Others — each
+  expense category assigned to one (Investments/savings and Transfers stay separate, not
+  spending areas). Month spending list groups under collapsible area headers with subtotals.
+  (3) The income-allocation donut is **replaced by a horizontal "barometer" meter**: full width
+  = month income, stacked colour segments = spending by area, centre number = "Left" (income −
+  spent, positive or negative). allocation.ts/donut removed.
+
 - 2026-07-15 — Per-month income-allocation **donut** in Month view (user request): slices
   Spent / Saved / Left over as shares of income (income total in the centre), colours echoing
   the net-worth chart. Edge cases (no income / overspent / savings withdrawn) show a

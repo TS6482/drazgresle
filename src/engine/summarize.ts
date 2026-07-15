@@ -23,15 +23,23 @@ export type BudgetMap = Record<string, CategoryBudget>;
 /** The reserved category id for transfers between own accounts. */
 export const TRANSFER_CATEGORY_ID = 'transfer';
 
-/** Groups whose outflow is SPENDING (savings are counted separately). */
-const EXPENSE_GROUPS = new Set(['fixed', 'variable']);
+/**
+ * Groups whose outflow is SPENDING (savings are counted separately). `'expense'`
+ * is the current group; `'fixed'` and `'variable'` are legacy aliases kept for
+ * backward compatibility — the app used to split spending into those two (always
+ * treated identically) before collapsing them into `'expense'`, and old data
+ * (plus the data repo, migrated separately) may still carry them.
+ */
+const EXPENSE_GROUPS = new Set<string>(['expense', 'fixed', 'variable']);
 
 /**
- * True for groups whose outflow counts as spending (fixed/variable). The UI
- * uses this for the spending budget list and top-spending — income rows are
- * already counted in the income total, savings rows in the saved total.
+ * True for groups whose outflow counts as spending. The UI uses this for the
+ * spending budget list and top-spending — income rows are already counted in the
+ * income total, savings rows in the saved total. Accepts a plain string (not just
+ * `CategoryGroup`) so the legacy `'fixed'`/`'variable'` values still on disk,
+ * which the narrowed `CategoryGroup` union no longer names, are matched too.
  */
-export function isExpenseGroup(group: CategoryGroup | undefined): boolean {
+export function isExpenseGroup(group: string | undefined): boolean {
   return group !== undefined && EXPENSE_GROUPS.has(group);
 }
 

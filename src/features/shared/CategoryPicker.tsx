@@ -2,7 +2,11 @@ import { useState } from 'react';
 import type { Category, CategoryGroup } from '../../types/data';
 import { uniqueSlug } from '../../engine/slug';
 import { useDataStore } from '../../store/data';
-import { CATEGORY_GROUP_LABELS, CATEGORY_GROUP_ORDER } from './labels';
+import {
+  CATEGORY_GROUP_LABELS,
+  CATEGORY_GROUP_ORDER,
+  normalizeCategoryGroup,
+} from './labels';
 import forms from './forms.module.css';
 
 interface CategoryPickerProps {
@@ -24,9 +28,17 @@ const NONE_VALUE = '';
  *  (real ids are slugs and cannot contain '+'). */
 const NEW_VALUE = '+new';
 
-/** Groups offered when creating a category inline — everything except the
- *  reserved transfer group. */
-const CREATABLE_GROUPS: CategoryGroup[] = CATEGORY_GROUP_ORDER.filter((g) => g !== 'transfer');
+/** Groups offered when creating a category inline — income / expense / savings
+ *  (`CATEGORY_GROUP_ORDER` already excludes the reserved transfer group). */
+const CREATABLE_GROUPS: CategoryGroup[] = CATEGORY_GROUP_ORDER;
+
+/**
+ * Display order for the category list's optgroups: the user-facing groups, then
+ * the reserved `transfer` group last so its (locked) category can still be
+ * selected to mark internal transfers. Legacy `fixed`/`variable` categories fold
+ * into Expense via `normalizeCategoryGroup`.
+ */
+const PICKER_GROUP_ORDER: CategoryGroup[] = [...CATEGORY_GROUP_ORDER, 'transfer'];
 
 /**
  * A category `<select>` grouped by category group, shared by the add/edit and
@@ -49,16 +61,16 @@ export function CategoryPicker({
 
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newGroup, setNewGroup] = useState<CategoryGroup>('variable');
+  const [newGroup, setNewGroup] = useState<CategoryGroup>('expense');
   const [createError, setCreateError] = useState<string | null>(null);
 
   const predicate = filter ?? ((c: Category) => c.active !== false);
   // Always keep the currently-selected category visible, even if inactive.
   const visible = categories.filter((c) => predicate(c) || c.id === value);
 
-  const groups = CATEGORY_GROUP_ORDER.map((group) => ({
+  const groups = PICKER_GROUP_ORDER.map((group) => ({
     group,
-    items: visible.filter((c) => c.group === group),
+    items: visible.filter((c) => normalizeCategoryGroup(c.group) === group),
   })).filter((g) => g.items.length > 0);
 
   function handleSelect(raw: string) {
@@ -86,7 +98,7 @@ export function CategoryPicker({
     }
     setCreating(false);
     setNewName('');
-    setNewGroup('variable');
+    setNewGroup('expense');
     setCreateError(null);
     onChange(newId);
   }

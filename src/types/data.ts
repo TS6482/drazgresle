@@ -117,11 +117,18 @@ export interface SnapshotsFile {
 
 /**
  * Coarse spending group a category belongs to. `income` money comes in;
- * `fixed`/`variable`/`savings` are expense groups (spend, budgeted); `transfer`
- * is the reserved group for money moved between the household's own accounts —
- * excluded from every income/spend total and from budgets (see §0 decision log).
+ * `expense` is spent (budgeted); `savings` is money put away; `transfer` is the
+ * reserved group for money moved between the household's own accounts — excluded
+ * from every income/spend total and from budgets (see §0 decision log).
+ *
+ * Legacy note: the app previously split spending into `'fixed'` and `'variable'`
+ * groups, which the engine always treated identically. They were collapsed into
+ * a single `'expense'` group. Old data (and the data repo, migrated separately)
+ * may still store `'fixed'`/`'variable'`; every spending check treats those as
+ * `'expense'` (see engine/summarize.ts `isExpenseGroup`), so this narrowed union
+ * describes what the UI now writes, not every value that may be on disk.
  */
-export type CategoryGroup = 'income' | 'fixed' | 'variable' | 'savings' | 'transfer';
+export type CategoryGroup = 'income' | 'expense' | 'savings' | 'transfer';
 
 /** A single spending/income category. The reserved transfer category has id
  *  `'transfer'`; the engine also treats any category with `group: 'transfer'`
@@ -133,6 +140,13 @@ export interface Category {
   /** Deactivated categories are hidden from pickers but kept — transactions
    *  reference ids, so a category is never deleted. Absent = active. */
   active?: boolean;
+  /**
+   * Which spending area (see engine/areas.ts) this category rolls up into, for
+   * organizing/reporting the Month view — a `SpendingArea` id. Meaningful only
+   * for expense categories; unset falls back to `'others'`. Ignored for
+   * income/savings/transfer categories.
+   */
+  area?: string;
 }
 
 /** `categories.json`. */
