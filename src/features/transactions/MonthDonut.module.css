@@ -39,10 +39,13 @@
   pointer-events: none;
 }
 
+/* Smaller than the summary figures so the income total fits inside the hole
+   without overflowing, even for seven-figure incomes. */
 .centerValue {
-  font-size: var(--text-lg);
+  font-size: 0.95rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   color: var(--color-text);
 }
 
@@ -51,48 +54,37 @@
   color: var(--color-text-muted);
 }
 
-.legend {
-  list-style: none;
+.hint {
   margin: 0;
-  padding: 0;
-  width: 100%;
-  max-width: 320px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 
-.legendItem {
+/* Slice tooltip (hover / tap) */
+.tooltip {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  flex-direction: column;
+  gap: 2px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.tooltipName {
+  font-weight: 600;
   font-size: var(--text-sm);
 }
 
-.legendSwatch {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-
-.legendName {
-  color: var(--color-text);
-}
-
-/* Amount takes the slack; percent sits hard right. Tabular figures keep the
-   two numeric columns aligned across rows. */
-.legendAmount {
-  margin-left: auto;
-  color: var(--color-text);
+.tooltipValue {
   font-variant-numeric: tabular-nums;
+  color: var(--color-text);
 }
 
-.legendPct {
-  min-width: 56px;
-  text-align: right;
+.tooltipPct {
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
-  font-variant-numeric: tabular-nums;
 }
 
 .note {

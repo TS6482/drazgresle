@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
-import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import type { TooltipContentProps } from 'recharts';
 import type { MonthSummary } from '../../engine/summarize';
 import { incomeAllocation } from '../../engine/allocation';
-import type { AllocationKey } from '../../engine/allocation';
+import type { AllocationKey, AllocationSlice } from '../../engine/allocation';
 import { formatKc } from '../../engine/money';
 import { formatPercent } from '../../engine/percent';
 import styles from './MonthDonut.module.css';
@@ -18,6 +19,22 @@ const SLICE_VAR: Record<AllocationKey, string> = {
   saved: '--slice-saved',
   leftover: '--slice-leftover',
 };
+
+/** Per-slice tooltip: name, amount, and share of income. Shows on hover
+ *  (desktop) or tap (phone). */
+function SliceTooltip({ active, payload }: TooltipContentProps) {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+  const slice = payload[0].payload as AllocationSlice;
+  return (
+    <div className={styles.tooltip}>
+      <span className={styles.tooltipName}>{slice.label}</span>
+      <span className={styles.tooltipValue}>{formatKc(slice.halere)}</span>
+      <span className={styles.tooltipPct}>{formatPercent(slice.pct)} of income</span>
+    </div>
+  );
+}
 
 /**
  * A donut of where the month's income went — Spent / Saved / Left over, each a
@@ -76,6 +93,7 @@ export function MonthDonut({ summary }: MonthDonutProps) {
                 <Cell key={s.key} fill={`var(${SLICE_VAR[s.key]})`} />
               ))}
             </Pie>
+            <Tooltip content={(props) => <SliceTooltip {...props} />} />
           </PieChart>
         </ResponsiveContainer>
         <div className={styles.center}>
@@ -83,21 +101,7 @@ export function MonthDonut({ summary }: MonthDonutProps) {
           <span className={styles.centerLabel}>Income</span>
         </div>
       </div>
-
-      <ul className={styles.legend}>
-        {allocation.slices.map((s) => (
-          <li key={s.key} className={styles.legendItem}>
-            <span
-              className={styles.legendSwatch}
-              style={{ background: `var(${SLICE_VAR[s.key]})` }}
-              aria-hidden="true"
-            />
-            <span className={styles.legendName}>{s.label}</span>
-            <span className={styles.legendAmount}>{formatKc(s.halere)}</span>
-            <span className={styles.legendPct}>{formatPercent(s.pct)}</span>
-          </li>
-        ))}
-      </ul>
+      <p className={styles.hint}>Tap a slice for the amount and share.</p>
     </div>
   );
 }

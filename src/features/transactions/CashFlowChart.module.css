@@ -1,0 +1,95 @@
+/* Monthly cash-flow line chart. Income = bank blue, Expenses = red — echoing
+   the app's validated palette, theme-aware (light + dark). */
+.chart {
+  --flow-income: #2a78d6;
+  --flow-expenses: #e34948;
+  --flow-grid: #e1e0d9;
+  --flow-axis: #898781;
+  --flow-baseline: #c3c2b7;
+
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-2) var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+@media (prefers-color-scheme: dark) {
+  .chart {
+    --flow-income: #3987e5;
+    --flow-expenses: #e66767;
+    --flow-grid: #2c2c2a;
+    --flow-baseline: #383835;
+  }
+}
+
+.title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: 0 var(--space-2) var(--space-1);
+}
+
+.legend {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0 var(--space-2);
+  display: flex;
+  gap: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* Tooltip */
+.tooltip {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.tooltipMonth {
+  font-weight: 600;
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-1);
+}
+
+.tooltipList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.tooltipRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.tooltipName {
+  color: var(--color-text-muted);
+}
+
+.tooltipValue {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}

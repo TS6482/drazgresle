@@ -50,3 +50,9 @@ export function formatDayMonth(iso: string): string {
   const [, m, d] = iso.split('-').map(Number);
   return `${d} ${MONTH_NAMES[m - 1].slice(0, 3)}`;
 }
+
+/** Short month label for a `'YYYY-MM'` key, e.g. "Jul" for 2026-07. */
+export function formatMonthShort(month: string): string {
+  const m = Number(month.split('-')[1]);
+  return MONTH_NAMES[m - 1].slice(0, 3);
+}

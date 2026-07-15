@@ -9,7 +9,9 @@ import {
   suggestRuleForStored,
 } from '../../engine/classify';
 import { formatKc } from '../../engine/money';
+import { cashFlowForYear } from '../../engine/cashflow';
 import { MonthDonut } from './MonthDonut';
+import { CashFlowChart } from './CashFlowChart';
 import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
 import { formatDayMonth, formatMonthLabel, shiftMonth } from '../../utils/dates';
@@ -61,9 +63,24 @@ export function MonthView() {
   // The full transaction list is collapsed by default; unclassified stay pinned.
   const [showAll, setShowAll] = useState(false);
 
+  // Months January..viewed of the viewed year — for the cash-flow chart.
+  const yearMonths = useMemo(() => {
+    const year = viewedMonth.slice(0, 4);
+    const upTo = Number(viewedMonth.slice(5, 7));
+    const list: string[] = [];
+    for (let m = 1; m <= upTo; m++) {
+      list.push(`${year}-${String(m).padStart(2, '0')}`);
+    }
+    return list;
+  }, [viewedMonth]);
+
   useEffect(() => {
-    void loadMonth(viewedMonth);
-  }, [viewedMonth, loadMonth]);
+    // Loading the viewed month plus every earlier month this year; the store
+    // dedupes already-loaded months, so this is cheap after the first pass.
+    for (const mk of yearMonths) {
+      void loadMonth(mk);
+    }
+  }, [yearMonths, loadMonth]);
 
   /** Change months, dropping the previous month's transient view state. */
   function goToMonth(delta: number) {
@@ -90,6 +107,11 @@ export function MonthView() {
   const summary = useMemo(
     () => summarizeMonth(transactions, categories, budgets, viewedMonth),
     [transactions, categories, budgets, viewedMonth],
+  );
+
+  const cashFlow = useMemo(
+    () => cashFlowForYear(months, categories, budgets, viewedMonth),
+    [months, categories, budgets, viewedMonth],
   );
 
   // Newest first for the transaction list.
@@ -499,26 +521,7 @@ export function MonthView() {
         </button>
       </div>
 
-      <div className={styles.summary}>
-        <div className={styles.summaryItem}>
-          <span className={styles.summaryLabel}>Income</span>
-          <span className={`${styles.summaryValue} ${styles.income}`}>
-            {formatKc(summary.incomeHalere)}
-          </span>
-        </div>
-        <div className={styles.summaryItem}>
-          <span className={styles.summaryLabel}>Spent</span>
-          <span className={styles.summaryValue}>{formatKc(summary.spendHalere)}</span>
-        </div>
-        <div className={styles.summaryItem}>
-          <span className={styles.summaryLabel}>Saved</span>
-          <span className={styles.summaryValue}>{formatKc(summary.savedHalere)}</span>
-        </div>
-        <div className={styles.summaryItem}>
-          <span className={styles.summaryLabel}>Left over</span>
-          <span className={styles.summaryValue}>{formatKc(summary.leftoverHalere)}</span>
-        </div>
-      </div>
+      <CashFlowChart series={cashFlow} />
 
       <MonthDonut summary={summary} />
 
