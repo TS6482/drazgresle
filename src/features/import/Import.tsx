@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { Category, Rule, StatementMeta, Transaction } from '../../types/data';
+import type { Category, Rule, RuleField, StatementMeta, Transaction } from '../../types/data';
 import { extractTextItems, PdfReadError } from '../../api/pdf';
 import {
   AirbankParseError,
@@ -20,15 +20,44 @@ import styles from './Import.module.css';
 
 type Step = 'pick' | 'review' | 'done';
 
-/** One reviewable transaction: the draft, its category, and whether to learn a rule. */
+/** One parsed row under review. Classification decisions live OUTSIDE this
+ *  object (group decisions / row corrections) so they derive and undo cleanly. */
 interface ReviewItem {
   id: string;
   parsed: ParsedTransaction;
   importHash: string;
   bookingMonth: string;
+  /** What the saved rules said at parse time (null = unclassified). */
+  autoCategoryId: string | null;
+}
+
+/**
+ * Unclassified rows sharing the same suggested rule key (same vendor account /
+ * merchant / counterparty) are reviewed as ONE decision — "BURGER PALACE… — 4
+ * transactions". `field === null` means no rule can be learned from these rows
+ * (they can still be categorized as a group).
+ */
+interface ReviewGroup {
+  key: string;
+  label: string;
+  field: RuleField | null;
+  suggestedPattern: string;
+  memberIds: string[];
+  /** The user's decision for every member (null = not decided yet). */
   categoryId: string | null;
-  /** True to save a vendor rule from this classification on commit. */
+  /** Save a rule from this decision on commit. */
   addRule: boolean;
+  /** The rule pattern, pre-filled with the suggestion and user-editable. */
+  pattern: string;
+}
+
+/** A correction of an auto-classified row, with its optional learned rule. */
+interface RowEdit {
+  categoryId: string | null;
+  addRule: boolean;
+  pattern: string;
+  field: RuleField | null;
+  suggestedPattern: string;
 }
 
 interface CommitResult {
@@ -38,21 +67,38 @@ interface CommitResult {
   monthsTouched: string[];
 }
 
-/** Build a review item from a parsed row, auto-classifying via existing rules. */
-function toReviewItem(parsed: ParsedTransaction, rules: Rule[]): ReviewItem {
-  const hash = importHash({
-    date: parsed.date,
-    amountHalere: parsed.amountHalere,
-    counterparty: parsed.counterparty,
-    description: parsed.description,
-  });
+/** The match mode a learned rule uses: account rules stay exact; a counterparty
+ *  rule stays exact only while its pattern is untouched (shortening it implies
+ *  substring matching); merchant/description rules are always contains. */
+function matchFor(field: RuleField, pattern: string, suggested: string): Rule['match'] {
+  if (field === 'counterpartyAccount') {
+    return 'exact';
+  }
+  if (field === 'counterparty') {
+    return pattern.trim().toLowerCase() === suggested.trim().toLowerCase() ? 'exact' : 'contains';
+  }
+  return 'contains';
+}
+
+/** Build the pending (not yet saved) rule from a decision, or null. */
+function pendingRuleFrom(
+  field: RuleField | null,
+  pattern: string,
+  suggested: string,
+  categoryId: string | null,
+  addRule: boolean,
+  createdFrom: string,
+): Rule | null {
+  if (field === null || categoryId === null || !addRule || pattern.trim() === '') {
+    return null;
+  }
   return {
-    id: newId('imp'),
-    parsed,
-    importHash: hash,
-    bookingMonth: monthKey(parsed.date),
-    categoryId: classify(parsed, rules),
-    addRule: false,
+    id: newId('rule'),
+    field,
+    match: matchFor(field, pattern, suggested),
+    pattern: pattern.trim(),
+    categoryId,
+    createdFrom,
   };
 }
 
@@ -71,6 +117,8 @@ export function Import() {
   const [fileName, setFileName] = useState('');
   const [statement, setStatement] = useState<AirbankStatement['statement'] | null>(null);
   const [items, setItems] = useState<ReviewItem[]>([]);
+  const [groups, setGroups] = useState<ReviewGroup[]>([]);
+  const [rowEdits, setRowEdits] = useState<Record<string, RowEdit>>({});
   const [duplicateCount, setDuplicateCount] = useState(0);
   const [result, setResult] = useState<CommitResult | null>(null);
 
@@ -85,7 +133,75 @@ export function Import() {
     [accounts],
   );
 
-  const unclassifiedCount = items.filter((i) => i.categoryId === null).length;
+  const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
+
+  /** Rules that WOULD be saved right now — they classify remaining rows live. */
+  const pendingRules = useMemo(() => {
+    const out: Rule[] = [];
+    for (const g of groups) {
+      const r = pendingRuleFrom(g.field, g.pattern, g.suggestedPattern, g.categoryId, g.addRule, g.label);
+      if (r) {
+        out.push(r);
+      }
+    }
+    for (const [id, edit] of Object.entries(rowEdits)) {
+      const item = itemById.get(id);
+      if (!item) {
+        continue;
+      }
+      const r = pendingRuleFrom(
+        edit.field,
+        edit.pattern,
+        edit.suggestedPattern,
+        edit.categoryId,
+        edit.addRule,
+        item.parsed.counterparty || item.parsed.description,
+      );
+      if (r) {
+        out.push(r);
+      }
+    }
+    return out;
+  }, [groups, rowEdits, itemById]);
+
+  const groupOf = useMemo(() => {
+    const map = new Map<string, ReviewGroup>();
+    for (const g of groups) {
+      for (const id of g.memberIds) {
+        map.set(id, g);
+      }
+    }
+    return map;
+  }, [groups]);
+
+  /**
+   * Effective category per row: an explicit row correction wins, then the row's
+   * group decision, then — for still-unclassified rows — any pending rule
+   * (instant propagation across the import), then the parse-time auto result.
+   */
+  const effective = useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const item of items) {
+      const edit = rowEdits[item.id];
+      if (edit) {
+        map.set(item.id, edit.categoryId);
+        continue;
+      }
+      const group = groupOf.get(item.id);
+      if (group && group.categoryId !== null) {
+        map.set(item.id, group.categoryId);
+        continue;
+      }
+      if (item.autoCategoryId === null && pendingRules.length > 0) {
+        map.set(item.id, classify(item.parsed, pendingRules));
+        continue;
+      }
+      map.set(item.id, item.autoCategoryId);
+    }
+    return map;
+  }, [items, rowEdits, groupOf, pendingRules]);
+
+  const unclassifiedCount = items.filter((i) => effective.get(i.id) === null).length;
 
   async function handleFile(file: File) {
     setBusy(true);
@@ -111,22 +227,65 @@ export function Import() {
         }
       }
 
-      const all = parsed.transactions.map((p) => toReviewItem(p, rules));
-      // Drop rows already present (same statement re-uploaded / overlapping export).
+      // Drop rows already present (same statement re-uploaded / overlap).
       const fresh: ReviewItem[] = [];
       let dupes = 0;
       const batchSeen = new Set<string>();
-      for (const item of all) {
-        if (seen.has(item.importHash) || batchSeen.has(item.importHash)) {
+      for (const p of parsed.transactions) {
+        const hash = importHash({
+          date: p.date,
+          amountHalere: p.amountHalere,
+          counterparty: p.counterparty,
+          description: p.description,
+        });
+        if (seen.has(hash) || batchSeen.has(hash)) {
           dupes += 1;
           continue;
         }
-        batchSeen.add(item.importHash);
-        fresh.push(item);
+        batchSeen.add(hash);
+        fresh.push({
+          id: newId('imp'),
+          parsed: p,
+          importHash: hash,
+          bookingMonth: monthKey(p.date),
+          autoCategoryId: classify(p, rules),
+        });
+      }
+
+      // Group the unclassified rows by their suggested rule key, so one
+      // decision covers every occurrence of the same vendor.
+      const groupMap = new Map<string, ReviewGroup>();
+      for (const item of fresh) {
+        if (item.autoCategoryId !== null) {
+          continue;
+        }
+        const s = suggestRule(item.parsed, 'x');
+        const key = s ? `${s.field}|${s.pattern.toLowerCase()}` : `solo-${item.id}`;
+        let g = groupMap.get(key);
+        if (!g) {
+          g = {
+            key,
+            label:
+              s?.field === 'counterpartyAccount'
+                ? item.parsed.counterparty || s.pattern
+                : (s?.pattern ??
+                  (item.parsed.counterparty || item.parsed.description || item.parsed.type)),
+            field: s?.field ?? null,
+            suggestedPattern: s?.pattern ?? '',
+            memberIds: [],
+            categoryId: null,
+            addRule: s !== null,
+            pattern: s?.pattern ?? '',
+          };
+          groupMap.set(key, g);
+        }
+        g.memberIds.push(item.id);
       }
 
       setStatement(parsed.statement);
       setItems(fresh);
+      setGroups([...groupMap.values()]);
+      setRowEdits({});
       setDuplicateCount(dupes);
       setFileName(file.name);
       setStep('review');
@@ -141,21 +300,32 @@ export function Import() {
     }
   }
 
-  function setCategory(itemId: string, categoryId: string | null) {
-    setItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== itemId) {
-          return item;
-        }
-        // Default the "learn a rule" checkbox on when we can key a rule reliably.
-        const canSuggest = categoryId !== null && suggestRule(item.parsed, categoryId) !== null;
-        return { ...item, categoryId, addRule: canSuggest };
-      }),
-    );
+  function updateGroup(key: string, patch: Partial<ReviewGroup>) {
+    setGroups((prev) => prev.map((g) => (g.key === key ? { ...g, ...patch } : g)));
   }
 
-  function setAddRule(itemId: string, addRule: boolean) {
-    setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, addRule } : item)));
+  function editRow(item: ReviewItem, categoryId: string | null) {
+    const s = categoryId !== null ? suggestRule(item.parsed, categoryId) : null;
+    setRowEdits((prev) => ({
+      ...prev,
+      [item.id]: {
+        categoryId,
+        addRule: s !== null,
+        pattern: s?.pattern ?? '',
+        field: s?.field ?? null,
+        suggestedPattern: s?.pattern ?? '',
+      },
+    }));
+  }
+
+  function updateRowEdit(itemId: string, patch: Partial<RowEdit>) {
+    setRowEdits((prev) => {
+      const current = prev[itemId];
+      if (!current) {
+        return prev;
+      }
+      return { ...prev, [itemId]: { ...current, ...patch } };
+    });
   }
 
   async function handleCommit() {
@@ -165,16 +335,10 @@ export function Import() {
     setBusy(true);
     setError(null);
 
-    // Collect rules to learn, de-duplicated by field+pattern.
+    // De-duplicate the learned rules by field+pattern.
     const ruleByKey = new Map<string, Rule>();
-    for (const item of items) {
-      if (!item.addRule || item.categoryId === null) {
-        continue;
-      }
-      const rule = suggestRule(item.parsed, item.categoryId);
-      if (rule) {
-        ruleByKey.set(`${rule.field}|${rule.pattern.toLowerCase()}`, rule);
-      }
+    for (const rule of pendingRules) {
+      ruleByKey.set(`${rule.field}|${rule.pattern.toLowerCase()}`, rule);
     }
     const newRules = [...ruleByKey.values()];
 
@@ -197,10 +361,13 @@ export function Import() {
         counterparty: item.parsed.counterparty,
         description: item.parsed.description,
         account: airbankAccountId,
-        categoryId: item.categoryId,
+        categoryId: effective.get(item.id) ?? null,
         source: 'airbank',
         importHash: item.importHash,
       };
+      if (item.parsed.type !== '') {
+        tx.bankType = item.parsed.type;
+      }
       ensure(item.bookingMonth).transactions.push(tx);
     }
 
@@ -244,6 +411,8 @@ export function Import() {
     setStep('pick');
     setStatement(null);
     setItems([]);
+    setGroups([]);
+    setRowEdits({});
     setDuplicateCount(0);
     setResult(null);
     setError(null);
@@ -257,30 +426,150 @@ export function Import() {
     return byId.get(categoryId)?.name ?? categoryId;
   }
 
-  // Unclassified rows pinned on top, then by date (newest first).
-  const ordered = useMemo(
+  // Groups: undecided first (largest first), decided sink but stay editable.
+  const orderedGroups = useMemo(() => {
+    const decided = (g: ReviewGroup) => {
+      const first = g.memberIds[0];
+      return first !== undefined && effective.get(first) !== null;
+    };
+    return [...groups].sort((a, b) => {
+      const ad = decided(a) ? 1 : 0;
+      const bd = decided(b) ? 1 : 0;
+      if (ad !== bd) {
+        return ad - bd;
+      }
+      return b.memberIds.length - a.memberIds.length;
+    });
+  }, [groups, effective]);
+
+  // Auto-classified rows (saved rules matched at parse time), newest first.
+  const classifiedRows = useMemo(
     () =>
-      [...items].sort((a, b) => {
-        const au = a.categoryId === null ? 0 : 1;
-        const bu = b.categoryId === null ? 0 : 1;
-        if (au !== bu) {
-          return au - bu;
-        }
-        return b.parsed.date.localeCompare(a.parsed.date);
-      }),
+      items
+        .filter((i) => i.autoCategoryId !== null)
+        .sort((a, b) => b.parsed.date.localeCompare(a.parsed.date)),
     [items],
   );
 
-  function renderRow(item: ReviewItem) {
+  function renderPatternEditor(
+    idPrefix: string,
+    field: RuleField | null,
+    categoryId: string | null,
+    addRule: boolean,
+    pattern: string,
+    vendorLabel: string,
+    onToggle: (checked: boolean) => void,
+    onPattern: (value: string) => void,
+  ) {
+    if (field === null || categoryId === null) {
+      return null;
+    }
+    return (
+      <div className={styles.ruleBox}>
+        <label className={styles.ruleRow} htmlFor={`${idPrefix}-chk`}>
+          <input
+            id={`${idPrefix}-chk`}
+            type="checkbox"
+            checked={addRule}
+            onChange={(e) => onToggle(e.target.checked)}
+          />
+          <span>
+            Always classify <strong>{vendorLabel}</strong> as{' '}
+            <strong>{categoryName(categoryId)}</strong>
+          </span>
+        </label>
+        {addRule && field !== 'counterpartyAccount' && (
+          <div className={styles.patternRow}>
+            <label className={styles.patternLabel} htmlFor={`${idPrefix}-pat`}>
+              matching text
+            </label>
+            <input
+              id={`${idPrefix}-pat`}
+              className={styles.patternInput}
+              type="text"
+              autoComplete="off"
+              value={pattern}
+              onChange={(e) => onPattern(e.target.value)}
+              aria-invalid={pattern.trim() === ''}
+            />
+            {pattern.trim() === '' ? (
+              <span className={styles.patternError} role="alert">
+                Enter the text to match — the rule is skipped while this is empty.
+              </span>
+            ) : (
+              <span className={styles.patternHint}>
+                Shorten it to match more (e.g. just the shop name). Applies to future imports too.
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderGroup(group: ReviewGroup) {
+    const members = group.memberIds
+      .map((id) => itemById.get(id))
+      .filter((i): i is ReviewItem => i !== undefined);
+    const first = members[0];
+    if (!first) {
+      return null;
+    }
+    const total = members.reduce((a, m) => a + m.parsed.amountHalere, 0);
+    const effectiveCat = effective.get(first.id) ?? null;
+    // Undecided here but covered by ANOTHER decision's pending rule.
+    const viaRule = group.categoryId === null && effectiveCat !== null;
+    return (
+      <li key={group.key} className={styles.row}>
+        <div className={styles.rowTop}>
+          <span className={styles.who}>{group.label}</span>
+          <span className={`${styles.amount} ${total > 0 ? styles.income : ''}`}>
+            {formatKc(total)}
+          </span>
+        </div>
+        <div className={styles.rowMeta}>
+          <span className={styles.type}>{first.parsed.type}</span>
+          <span className={styles.date}>
+            {members.length === 1
+              ? formatDayMonth(first.parsed.date)
+              : `${members.length} transactions`}
+          </span>
+          {viaRule && <span className={styles.viaRule}>matched by your new rule</span>}
+        </div>
+        {first.parsed.description && first.parsed.description !== group.label && (
+          <span className={styles.desc}>{first.parsed.description}</span>
+        )}
+        <CategoryPicker
+          id={`grp-${group.key}`}
+          value={group.categoryId ?? effectiveCat}
+          onChange={(categoryId) => updateGroup(group.key, { categoryId })}
+          categories={categories}
+          includeNone
+          noneLabel="Choose a category…"
+        />
+        {renderPatternEditor(
+          `grp-${group.key}`,
+          group.field,
+          group.categoryId,
+          group.addRule,
+          group.pattern,
+          group.label,
+          (checked) => updateGroup(group.key, { addRule: checked }),
+          (value) => updateGroup(group.key, { pattern: value }),
+        )}
+      </li>
+    );
+  }
+
+  function renderClassifiedRow(item: ReviewItem) {
     const p = item.parsed;
-    const income = p.amountHalere > 0;
-    const suggestion =
-      item.categoryId !== null ? suggestRule(p, item.categoryId) : null;
+    const edit = rowEdits[item.id];
+    const cat = effective.get(item.id) ?? null;
     return (
       <li key={item.id} className={styles.row}>
         <div className={styles.rowTop}>
           <span className={styles.who}>{p.counterparty || p.description || p.type}</span>
-          <span className={`${styles.amount} ${income ? styles.income : ''}`}>
+          <span className={`${styles.amount} ${p.amountHalere > 0 ? styles.income : ''}`}>
             {formatKc(p.amountHalere)}
           </span>
         </div>
@@ -288,32 +577,30 @@ export function Import() {
           <span className={styles.date}>{formatDayMonth(p.date)}</span>
           <span className={styles.type}>{p.type}</span>
         </div>
-        {p.description && p.counterparty && (
-          <span className={styles.desc}>{p.description}</span>
-        )}
+        {p.description && p.counterparty && <span className={styles.desc}>{p.description}</span>}
         <CategoryPicker
           id={`imp-cat-${item.id}`}
-          value={item.categoryId}
-          onChange={(categoryId) => setCategory(item.id, categoryId)}
+          value={cat}
+          onChange={(categoryId) => editRow(item, categoryId)}
           categories={categories}
           includeNone
-          noneLabel="Choose a category…"
+          noneLabel="Uncategorized"
         />
-        {item.categoryId !== null && suggestion && (
-          <label className={styles.ruleRow} htmlFor={`imp-rule-${item.id}`}>
-            <input
-              id={`imp-rule-${item.id}`}
-              type="checkbox"
-              checked={item.addRule}
-              onChange={(e) => setAddRule(item.id, e.target.checked)}
-            />
-            <span>
-              Always classify{' '}
-              <strong>{suggestion.field === 'counterpartyAccount' ? p.counterpartyAccount : p.counterparty}</strong>{' '}
-              as <strong>{categoryName(item.categoryId)}</strong>
-            </span>
-          </label>
-        )}
+        {edit &&
+          edit.categoryId !== null &&
+          edit.categoryId !== item.autoCategoryId &&
+          renderPatternEditor(
+            `row-${item.id}`,
+            edit.field,
+            edit.categoryId,
+            edit.addRule,
+            edit.pattern,
+            edit.field === 'counterpartyAccount'
+              ? p.counterparty || edit.suggestedPattern
+              : edit.suggestedPattern,
+            (checked) => updateRowEdit(item.id, { addRule: checked }),
+            (value) => updateRowEdit(item.id, { pattern: value }),
+          )}
       </li>
     );
   }
@@ -400,7 +687,22 @@ export function Import() {
             Every transaction in this statement is already imported — nothing new to add.
           </p>
         ) : (
-          <ul className={styles.list}>{ordered.map(renderRow)}</ul>
+          <>
+            {orderedGroups.length > 0 && (
+              <>
+                <h2 className={styles.sectionHeading}>Needs a category</h2>
+                <ul className={styles.list}>{orderedGroups.map(renderGroup)}</ul>
+              </>
+            )}
+            {classifiedRows.length > 0 && (
+              <>
+                <h2 className={styles.sectionHeading}>
+                  Classified automatically ({classifiedRows.length})
+                </h2>
+                <ul className={styles.list}>{classifiedRows.map(renderClassifiedRow)}</ul>
+              </>
+            )}
+          </>
         )}
 
         {error && (

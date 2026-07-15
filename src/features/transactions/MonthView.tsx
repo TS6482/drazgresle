@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Category, Transaction } from '../../types/data';
 import { summarizeMonth } from '../../engine/summarize';
+import { classify } from '../../engine/classify';
 import { formatKc } from '../../engine/money';
 import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
@@ -24,15 +25,24 @@ export function MonthView() {
   const currentMonthKey = useDataStore((s) => s.currentMonthKey);
   const loadMonth = useDataStore((s) => s.loadMonth);
   const saveTransaction = useDataStore((s) => s.saveTransaction);
+  const saveTransactions = useDataStore((s) => s.saveTransactions);
   const deleteTransaction = useDataStore((s) => s.deleteTransaction);
+  const rules = useDataStore((s) => s.rules);
   const saving = useDataStore((s) => s.saving);
 
   const [viewedMonth, setViewedMonth] = useState(currentMonthKey);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [autoResult, setAutoResult] = useState<string | null>(null);
 
   useEffect(() => {
     void loadMonth(viewedMonth);
   }, [viewedMonth, loadMonth]);
+
+  /** Change months and drop the previous month's auto-classify message. */
+  function goToMonth(delta: number) {
+    setAutoResult(null);
+    setViewedMonth((m) => shiftMonth(m, delta));
+  }
 
   const transactions = useMemo(() => months[viewedMonth] ?? [], [months, viewedMonth]);
   const loaded = monthsLoaded[viewedMonth] ?? false;
@@ -70,6 +80,29 @@ export function MonthView() {
     const ok = await deleteTransaction(viewedMonth, tx.id);
     if (ok) {
       setEditingId(null);
+    }
+  }
+
+  /** Retroactive re-apply: run the CURRENT rules over this month's unclassified
+   *  transactions and save every new match in one write (explicit, never
+   *  automatic — see docs/ARCHITECTURE.md §6). */
+  async function autoClassify() {
+    const updated: Transaction[] = [];
+    for (const tx of unclassified) {
+      const categoryId = classify(tx, rules);
+      if (categoryId !== null) {
+        updated.push({ ...tx, categoryId });
+      }
+    }
+    if (updated.length === 0) {
+      setAutoResult('No rule matched — classify one by hand to teach a new rule.');
+      return;
+    }
+    const ok = await saveTransactions(viewedMonth, updated);
+    if (ok) {
+      setAutoResult(
+        `Classified ${updated.length} of ${unclassified.length} using your rules.`,
+      );
     }
   }
 
@@ -134,7 +167,7 @@ export function MonthView() {
         <button
           type="button"
           className={styles.navBtn}
-          onClick={() => setViewedMonth((m) => shiftMonth(m, -1))}
+          onClick={() => goToMonth(-1)}
           aria-label="Previous month"
         >
           ‹
@@ -143,7 +176,7 @@ export function MonthView() {
         <button
           type="button"
           className={styles.navBtn}
-          onClick={() => setViewedMonth((m) => shiftMonth(m, 1))}
+          onClick={() => goToMonth(1)}
           aria-label="Next month"
         >
           ›
@@ -196,8 +229,23 @@ export function MonthView() {
           <h2 className={styles.blockHeading}>
             Needs a category ({unclassified.length})
           </h2>
+          {rules.length > 0 && (
+            <button
+              type="button"
+              className={styles.secondaryBtn}
+              onClick={() => void autoClassify()}
+              disabled={saving}
+            >
+              {saving ? 'Working…' : `Auto-classify ${unclassified.length} unclassified`}
+            </button>
+          )}
+          {autoResult && <p className={styles.muted}>{autoResult}</p>}
           <ul className={styles.txList}>{unclassified.map(renderRow)}</ul>
         </div>
+      )}
+
+      {unclassified.length === 0 && autoResult && (
+        <p className={styles.muted}>{autoResult}</p>
       )}
 
       {summary.byCategory.length > 0 && (

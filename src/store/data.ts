@@ -192,6 +192,19 @@ function mergeTransaction(transaction: Transaction) {
   };
 }
 
+/** Upsert many transactions by id in one write, preserving statements. */
+function mergeTransactions(next: Transaction[]) {
+  return (current: MonthFile | null): MonthFile => {
+    const byId = new Map<string, Transaction>(
+      (current?.transactions ?? []).map((t) => [t.id, t]),
+    );
+    for (const tx of next) {
+      byId.set(tx.id, tx);
+    }
+    return buildMonthFile([...byId.values()], current?.statements ?? []);
+  };
+}
+
 /** Remove the transaction with `id` from its month file, preserving statements. */
 function mergeDeleteTransaction(id: string) {
   return (current: MonthFile | null): MonthFile =>
@@ -300,6 +313,9 @@ interface DataState {
   saveTransaction: (transaction: Transaction) => Promise<boolean>;
   /** Remove a transaction by id from the given month. */
   deleteTransaction: (month: string, id: string) => Promise<boolean>;
+  /** Upsert many transactions into one month file in a single write (e.g. the
+   *  "auto-classify unclassified" retroactive re-apply). */
+  saveTransactions: (month: string, transactions: Transaction[]) => Promise<boolean>;
   /** Upsert-by-id the given rules and persist. */
   saveRules: (rules: Rule[]) => Promise<boolean>;
   /**
@@ -586,6 +602,36 @@ export const useDataStore = create<DataState>((set, get) => {
         localCurrent,
         mergeDeleteTransaction(id),
         `Delete transaction ${id}`,
+      );
+      if (!result) {
+        return false;
+      }
+      set((state) => ({
+        months: { ...state.months, [month]: result.data.transactions },
+        monthStatements: { ...state.monthStatements, [month]: result.data.statements ?? [] },
+        monthShas: { ...state.monthShas, [month]: result.sha },
+        monthsLoaded: { ...state.monthsLoaded, [month]: true },
+      }));
+      return true;
+    },
+
+    saveTransactions: async (month, next) => {
+      if (next.length === 0) {
+        return true;
+      }
+      if (!get().monthsLoaded[month]) {
+        await get().loadMonth(month);
+      }
+      const localCurrent = buildMonthFile(
+        get().months[month] ?? [],
+        get().monthStatements[month] ?? [],
+      );
+      const result = await write(
+        monthPath(month),
+        get().monthShas[month] ?? null,
+        localCurrent,
+        mergeTransactions(next),
+        `Update ${next.length} transactions in ${month}`,
       );
       if (!result) {
         return false;

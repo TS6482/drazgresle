@@ -165,6 +165,12 @@ export interface Transaction {
   source: TransactionSource;
   /** Hash of (date, amount, counterparty, raw description) for import dedupe. */
   importHash?: string;
+  /**
+   * The bank's transaction type as printed on the statement (e.g. "Platba
+   * kartou"). Absent on cash/manual entries and on rows imported before this
+   * field existed; classification treats a missing value as "not a card row".
+   */
+  bankType?: string;
 }
 
 /**

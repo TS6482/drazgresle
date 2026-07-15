@@ -19,6 +19,32 @@ export interface ClassifiableTransaction {
   counterparty: string;
   description: string;
   counterpartyAccount?: string;
+  /** The bank's Typ string (e.g. "Platba kartou"); absent on cash/manual rows. */
+  bankType?: string;
+}
+
+/**
+ * Bank types whose `counterparty` is the CARDHOLDER, not the vendor — card
+ * payments ("Platba kartou") and card cash withdrawals ("Výběr hotovosti").
+ * For these rows the vendor lives in the description, so learning a
+ * counterparty rule would (dangerously) match every card payment by that
+ * person; merchant-based description rules are used instead.
+ */
+const CARD_TYPE_RE = /kartou|hotovosti/i;
+
+/** True when a row's counterparty names the cardholder rather than a vendor. */
+function isCardRow(tx: ClassifiableTransaction): boolean {
+  return tx.bankType !== undefined && CARD_TYPE_RE.test(tx.bankType);
+}
+
+/**
+ * The merchant part of a card payment's description: the first segment up to
+ * the first comma, trimmed — e.g. `"BURGER PALACE OC PLAZA 12, BRNO, 60200"` →
+ * `"BURGER PALACE OC PLAZA 12"`. Returns `null` when nothing usable remains.
+ */
+export function extractMerchant(description: string): string | null {
+  const first = description.split(',')[0].trim();
+  return first === '' ? null : first;
 }
 
 /** The value of the field a rule tests, or `''` when absent. */
@@ -72,10 +98,19 @@ export function classify(tx: ClassifiableTransaction, rules: Rule[]): string | n
 }
 
 /**
- * Build a sensible rule from a user's classification of a transaction: match on
- * the counterparty account exactly when the transaction has one (the most
- * reliable key), otherwise on the counterparty name exactly. Returns `null` when
- * neither field has usable content to key on. The returned rule has a fresh id.
+ * Build a sensible rule from a user's classification of a transaction:
+ *
+ * 1. Counterparty account, exactly, when the transaction has one — the most
+ *    reliable key.
+ * 2. For card rows (see {@link isCardRow}) or rows with no counterparty at all,
+ *    the vendor lives in the description: a case-insensitive `contains` rule on
+ *    the extracted merchant (which the UI lets the user shorten, e.g.
+ *    "BURGER PALACE OC PLAZA 12" → "BURGER PALACE").
+ * 3. Otherwise the counterparty name, exactly.
+ *
+ * Returns `null` when nothing usable exists to key on — notably a card row
+ * with an empty description: its counterparty is the cardholder, and a rule on
+ * that would swallow every card payment by that person.
  */
 export function suggestRule(
   tx: ClassifiableTransaction,
@@ -91,6 +126,25 @@ export function suggestRule(
       categoryId,
       createdFrom: tx.counterparty || tx.description,
     };
+  }
+  const cardLike = isCardRow(tx) || tx.counterparty.trim() === '';
+  if (cardLike) {
+    const merchant = extractMerchant(tx.description);
+    if (merchant) {
+      return {
+        id: newId('rule'),
+        field: 'description',
+        match: 'contains',
+        pattern: merchant,
+        categoryId,
+        createdFrom: tx.description,
+      };
+    }
+    // A card row with no usable description: never fall back to the
+    // counterparty — it names the cardholder, not the vendor.
+    if (isCardRow(tx)) {
+      return null;
+    }
   }
   const counterparty = tx.counterparty.trim();
   if (counterparty) {
