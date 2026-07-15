@@ -270,6 +270,16 @@
   white-space: nowrap;
 }
 
+/* The user's own note — italic so it can never be confused with bank data. */
+.txNote {
+  font-size: var(--text-sm);
+  font-style: italic;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .chip {
   font-size: var(--text-sm);
   padding: 1px var(--space-2);
@@ -372,6 +382,16 @@
 .editorActions {
   display: flex;
   gap: var(--space-2);
+}
+
+/* Unobtrusive add/edit-note affordance in the row editor. */
+.noteBtn {
+  min-height: 44px;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
 }
 
 .confirmBtn {

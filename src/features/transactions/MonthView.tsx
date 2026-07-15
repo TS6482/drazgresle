@@ -53,6 +53,8 @@ export function MonthView() {
   const [autoResult, setAutoResult] = useState<string | null>(null);
   // A category change staged in the inline editor, with its rule offer.
   const [pending, setPending] = useState<PendingChange | null>(null);
+  // The personal-note input open in the inline editor, if any.
+  const [noteDraft, setNoteDraft] = useState<{ txId: string; value: string } | null>(null);
   // Category drill-downs open in budget-vs-actual (several may be open at once).
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   // The full transaction list is collapsed by default; unclassified stay pinned.
@@ -67,6 +69,8 @@ export function MonthView() {
     setAutoResult(null);
     setOpenCategories({});
     setShowAll(false);
+    setPending(null);
+    setNoteDraft(null);
     setViewedMonth((m) => shiftMonth(m, delta));
   }
 
@@ -176,6 +180,25 @@ export function MonthView() {
     if (ok) {
       setEditingId(null);
       setPending(null);
+      setNoteDraft(null);
+    }
+  }
+
+  /** Save the note draft; blank text removes the note entirely. */
+  async function saveNote(tx: Transaction) {
+    if (!noteDraft || noteDraft.txId !== tx.id) {
+      return;
+    }
+    const value = noteDraft.value.trim();
+    const next: Transaction = { ...tx };
+    if (value === '') {
+      delete next.note;
+    } else {
+      next.note = value;
+    }
+    const ok = await saveTransaction(next);
+    if (ok) {
+      setNoteDraft(null);
     }
   }
 
@@ -204,10 +227,10 @@ export function MonthView() {
 
   /** Primary row line: the VENDOR for bank rows (merchant for card payments —
    *  the counterparty is just the cardholder); cash/manual entries keep their
-   *  typed note/counterparty as before. */
+   *  typed note/counterparty as before (new cash entries store it in `note`). */
   function primaryLine(tx: Transaction): string {
     if (tx.source === 'cash' || tx.source === 'manual') {
-      return tx.counterparty || tx.description || categoryName(tx.categoryId);
+      return tx.counterparty || tx.description || tx.note || categoryName(tx.categoryId);
     }
     return displayVendor(tx);
   }
@@ -226,6 +249,7 @@ export function MonthView() {
           className={styles.txRow}
           onClick={() => {
             setPending(null);
+            setNoteDraft(null);
             setEditingId(editing ? null : tx.id);
           }}
           aria-expanded={editing}
@@ -241,6 +265,9 @@ export function MonthView() {
               </span>
               {secondary && <span className={styles.txDesc}>{secondary}</span>}
             </span>
+            {tx.note && tx.note !== primary && (
+              <span className={styles.txNote}>✎ {tx.note}</span>
+            )}
           </span>
           <span className={`${styles.txAmount} ${income ? styles.income : ''}`}>
             {formatKc(tx.amountHalere)}
@@ -329,14 +356,57 @@ export function MonthView() {
             )}
 
             {!staged && (
-              <button
-                type="button"
-                className={styles.deleteBtn}
-                onClick={() => void remove(tx)}
-                disabled={saving}
-              >
-                Delete transaction
-              </button>
+              <>
+                {noteDraft && noteDraft.txId === tx.id ? (
+                  <div className={styles.patternRow}>
+                    <label className={styles.editorLabel} htmlFor={`note-${tx.id}`}>
+                      Note (yours, not the bank&apos;s)
+                    </label>
+                    <input
+                      id={`note-${tx.id}`}
+                      className={styles.patternInput}
+                      type="text"
+                      autoComplete="off"
+                      value={noteDraft.value}
+                      onChange={(e) => setNoteDraft({ txId: tx.id, value: e.target.value })}
+                      placeholder="e.g. ask about this"
+                    />
+                    <div className={styles.editorActions}>
+                      <button
+                        type="button"
+                        className={styles.confirmBtn}
+                        onClick={() => void saveNote(tx)}
+                        disabled={saving}
+                      >
+                        {saving ? 'Saving…' : tx.note && noteDraft.value.trim() === '' ? 'Remove note' : 'Save note'}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.cancelBtn}
+                        onClick={() => setNoteDraft(null)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.noteBtn}
+                    onClick={() => setNoteDraft({ txId: tx.id, value: tx.note ?? '' })}
+                  >
+                    {tx.note ? '✎ Edit note' : '✎ Add note'}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={styles.deleteBtn}
+                  onClick={() => void remove(tx)}
+                  disabled={saving}
+                >
+                  Delete transaction
+                </button>
+              </>
             )}
           </div>
         )}

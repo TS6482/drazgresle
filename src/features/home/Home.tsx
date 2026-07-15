@@ -71,10 +71,11 @@ export function Home() {
   }
 
   /** Recent rows lead with the vendor (merchant for card rows); cash/manual
-   *  entries keep their typed note/counterparty. */
+   *  entries keep their typed note/counterparty (new cash entries store it in
+   *  `note`). */
   function recentLine(tx: (typeof recent)[number]): string {
     if (tx.source === 'cash' || tx.source === 'manual') {
-      return tx.counterparty || tx.description || categoryName(tx.categoryId);
+      return tx.counterparty || tx.description || tx.note || categoryName(tx.categoryId);
     }
     return displayVendor(tx);
   }

@@ -179,6 +179,12 @@ export interface Transaction {
    * is gone from the stored form) and simply never match account rules.
    */
   counterpartyAccount?: string;
+  /**
+   * The user's own note ("ask about this", "cash gift for X") — personal
+   * context, never bank data. New cash quick-adds store their note here;
+   * older cash entries kept it in `description` and display as before.
+   */
+  note?: string;
 }
 
 /**

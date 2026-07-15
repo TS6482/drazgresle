@@ -39,16 +39,21 @@ export function AddCash() {
     }
     const magnitude = Math.abs(parseKcInput(amount) ?? 0);
     const signed = direction === 'expense' ? -magnitude : magnitude;
+    // The typed note is the user's own text, so it lands in `note` (older cash
+    // entries stored it in `description` and still display as before).
     const tx: Transaction = {
       id: newId('tx'),
       date,
       amountHalere: signed,
       counterparty: '',
-      description: note.trim(),
+      description: '',
       account: '',
       categoryId,
       source: 'cash',
     };
+    if (note.trim() !== '') {
+      tx.note = note.trim();
+    }
     const ok = await saveTransaction(tx);
     if (ok) {
       navigate('/');
