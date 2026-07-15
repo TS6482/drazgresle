@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Category, Transaction } from '../../types/data';
-import { summarizeMonth } from '../../engine/summarize';
+import { isExpenseGroup, summarizeMonth } from '../../engine/summarize';
 import { classify } from '../../engine/classify';
 import { formatKc } from '../../engine/money';
 import { useDataStore } from '../../store/data';
@@ -64,6 +64,11 @@ export function MonthView() {
   );
 
   const unclassified = ordered.filter((t) => t.categoryId === null);
+
+  // Budget-vs-actual is an EXPENSE view: income categories are already counted
+  // in the Income total above, so their rows are presentation noise here. The
+  // engine still returns them in byCategory (filtering is display-only).
+  const budgetRows = summary.byCategory.filter((row) => isExpenseGroup(row.group));
 
   function categoryName(categoryId: string | null): string {
     if (categoryId === null) {
@@ -248,11 +253,11 @@ export function MonthView() {
         <p className={styles.muted}>{autoResult}</p>
       )}
 
-      {summary.byCategory.length > 0 && (
+      {budgetRows.length > 0 && (
         <div className={styles.block}>
           <h2 className={styles.blockHeading}>Budget vs actual</h2>
           <ul className={styles.budgetList}>
-            {summary.byCategory.map((row) => {
+            {budgetRows.map((row) => {
               const hasBudget = row.budgetHalere !== null;
               const over = row.overBudget;
               const fraction = hasBudget ? progressFraction(row.spendHalere, row.budgetHalere ?? 0) : 0;

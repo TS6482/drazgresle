@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   budgetFor,
+  isExpenseGroup,
   monthKey,
   summarizeMonth,
   totalBudgetForMonth,
@@ -70,6 +71,17 @@ describe('totalBudgetForMonth', () => {
 
   it('returns null when no budgets are set', () => {
     expect(totalBudgetForMonth({}, '2026-07')).toBeNull();
+  });
+});
+
+describe('isExpenseGroup', () => {
+  it('is true only for the budgeted expense groups', () => {
+    expect(isExpenseGroup('fixed')).toBe(true);
+    expect(isExpenseGroup('variable')).toBe(true);
+    expect(isExpenseGroup('savings')).toBe(true);
+    expect(isExpenseGroup('income')).toBe(false);
+    expect(isExpenseGroup('transfer')).toBe(false);
+    expect(isExpenseGroup(undefined)).toBe(false);
   });
 });
 
@@ -194,6 +206,40 @@ describe('summarizeMonth', () => {
     const save = s.byCategory.find((c) => c.categoryId === 'save');
     expect(save?.spendHalere).toBe(0);
     expect(save?.budgetHalere).toBe(500_000);
+  });
+
+  it('exposes each row’s category group, keeping income rows in byCategory', () => {
+    const s = summarizeMonth(
+      [
+        tx({ amountHalere: 5_000_000, categoryId: 'salary' }),
+        tx({ amountHalere: -200_000, categoryId: 'groceries' }),
+      ],
+      categories,
+      noBudgets,
+      '2026-07',
+    );
+    // The engine stays complete: the income row is present (with its group),
+    // so filtering it out of budget-vs-actual is purely presentation.
+    const salary = s.byCategory.find((c) => c.categoryId === 'salary');
+    expect(salary).toBeDefined();
+    expect(salary?.group).toBe('income');
+    expect(salary?.netHalere).toBe(5_000_000);
+    expect(s.byCategory.find((c) => c.categoryId === 'groceries')?.group).toBe('variable');
+  });
+
+  it('leaves group undefined for a transaction with an unknown category id', () => {
+    const s = summarizeMonth(
+      [tx({ amountHalere: -100_000, categoryId: 'ghost' })],
+      categories,
+      noBudgets,
+      '2026-07',
+    );
+    const ghost = s.byCategory.find((c) => c.categoryId === 'ghost');
+    expect(ghost).toBeDefined();
+    expect(ghost?.group).toBeUndefined();
+    // Unknown ids are not expense groups, so they carry no spend either.
+    expect(ghost?.spendHalere).toBe(0);
+    expect(ghost?.netHalere).toBe(-100_000);
   });
 
   it('handles an empty month', () => {

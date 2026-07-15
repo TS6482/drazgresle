@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { Category } from '../../types/data';
 import { computeNetWorth } from '../../engine/networth';
-import { summarizeMonth, totalBudgetForMonth } from '../../engine/summarize';
+import { isExpenseGroup, summarizeMonth, totalBudgetForMonth } from '../../engine/summarize';
 import { formatKc } from '../../engine/money';
 import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
@@ -40,7 +40,11 @@ export function Home() {
     [budgets, currentMonthKey],
   );
 
-  const topCategories = summary.byCategory.filter((c) => c.spendHalere > 0).slice(0, 3);
+  // Expense groups only: an income category must never appear in "top
+  // spending", even in a month with no spending at all.
+  const topCategories = summary.byCategory
+    .filter((c) => isExpenseGroup(c.group) && c.spendHalere > 0)
+    .slice(0, 3);
 
   const recent = useMemo(
     () =>

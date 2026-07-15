@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Category, CategoryBudget } from '../../types/data';
 import type { BudgetMap } from '../../engine/summarize';
 import { parseKcInput } from '../../engine/money';
-import { budgetFor } from '../../engine/summarize';
+import { budgetFor, isExpenseGroup } from '../../engine/summarize';
 import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
 import { formatMonthLabel, shiftMonth } from '../../utils/dates';
@@ -12,10 +12,8 @@ import forms from '../shared/forms.module.css';
 import styles from './Budgets.module.css';
 
 /** Budgets apply to active expense categories only (never income/transfer). */
-const BUDGETABLE_GROUPS = new Set(['fixed', 'variable', 'savings']);
-
 function isBudgetable(category: Category): boolean {
-  return category.active !== false && BUDGETABLE_GROUPS.has(category.group);
+  return category.active !== false && isExpenseGroup(category.group);
 }
 
 function halereToString(halere: number | undefined): string {

@@ -10,7 +10,7 @@
 // - Unclassified transactions (categoryId null) are excluded from income/spend
 //   and surfaced separately via `unclassifiedCount`.
 
-import type { Category, CategoryBudget, Transaction } from '../types/data';
+import type { Category, CategoryBudget, CategoryGroup, Transaction } from '../types/data';
 
 /** Map of category id → its budget (the `budgets` field of budgets.json). */
 export type BudgetMap = Record<string, CategoryBudget>;
@@ -20,6 +20,15 @@ export const TRANSFER_CATEGORY_ID = 'transfer';
 
 /** Expense groups whose spending counts toward budgets and the spend total. */
 const EXPENSE_GROUPS = new Set(['fixed', 'variable', 'savings']);
+
+/**
+ * True for groups whose spending is budgeted (fixed/variable/savings). The UI
+ * uses this to keep income rows out of budget-vs-actual and top-spending lists
+ * — they are already counted in the income total.
+ */
+export function isExpenseGroup(group: CategoryGroup | undefined): boolean {
+  return group !== undefined && EXPENSE_GROUPS.has(group);
+}
 
 /** `'YYYY-MM'` for an ISO date (or any string beginning with one). */
 export function monthKey(date: string): string {
@@ -74,6 +83,11 @@ function isTransferCategory(categoryId: string, byId: Map<string, Category>): bo
 /** One row of the per-category breakdown. */
 export interface CategorySummary {
   categoryId: string;
+  /** The category's group, or undefined when the id is unknown (e.g. a
+   *  transaction referencing a deleted-from-file category). Lets the UI filter
+   *  presentation (say, budget-vs-actual shows expense groups only) without
+   *  the engine dropping any data. */
+  group?: CategoryGroup;
   /** Signed sum of amounts in the category (negative = net outflow). */
   netHalere: number;
   /** Positive spend for expense categories; 0 for income/transfer categories. */
@@ -162,13 +176,17 @@ export function summarizeMonth(
       spendHalere += spend;
     }
     const budgetHalere = budgetFor(budgets, id, month);
-    byCategory.push({
+    const row: CategorySummary = {
       categoryId: id,
       netHalere: net,
       spendHalere: spend,
       budgetHalere,
       overBudget: budgetHalere !== null && spend > budgetHalere,
-    });
+    };
+    if (group !== undefined) {
+      row.group = group;
+    }
+    byCategory.push(row);
   }
 
   byCategory.sort((a, b) => b.spendHalere - a.spendHalere);
