@@ -243,14 +243,25 @@ function mergeImport(add: Transaction[], statement: StatementMeta | undefined) {
   };
 }
 
-/** Upsert each given rule by id onto the current rules file, keeping others. */
+/**
+ * Upsert rules: a known id is updated IN PLACE (keeps its position, so
+ * retargeting a rule preserves its precedence), while a new id is PREPENDED —
+ * rule order decides ties within a match class (engine/classify.ts), and a
+ * rule the user just confirmed must outrank older rules it may conflict with.
+ * planRuleUpdate in the engine relies on exactly these semantics.
+ */
 function mergeRules(next: Rule[]) {
   return (current: RulesFile | null): RulesFile => {
     const byId = new Map<string, Rule>((current?.rules ?? []).map((r) => [r.id, r]));
+    const fresh: Rule[] = [];
     for (const rule of next) {
-      byId.set(rule.id, rule);
+      if (byId.has(rule.id)) {
+        byId.set(rule.id, rule);
+      } else {
+        fresh.push(rule);
+      }
     }
-    return { schemaVersion: 1, rules: [...byId.values()] };
+    return { schemaVersion: 1, rules: [...fresh, ...byId.values()] };
   };
 }
 

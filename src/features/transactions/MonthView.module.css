@@ -315,3 +315,86 @@
   border: 1px solid var(--color-danger);
   cursor: pointer;
 }
+
+/* --- inline rule offer (correction = learning) --- */
+.ruleBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ruleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.ruleRow input {
+  min-width: 20px;
+  min-height: 20px;
+  margin-top: 1px;
+}
+
+.patternRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.patternInput {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.patternInput[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.patternError {
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}
+
+.patternHint {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.editorActions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.confirmBtn {
+  flex: 1;
+  min-height: 44px;
+  border-radius: var(--radius);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border: 1px solid var(--color-primary);
+  cursor: pointer;
+}
+
+.confirmBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.cancelBtn {
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+}

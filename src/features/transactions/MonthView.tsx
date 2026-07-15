@@ -1,13 +1,30 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Category, Transaction } from '../../types/data';
+import type { Category, Rule, RuleField, Transaction } from '../../types/data';
 import { isExpenseGroup, summarizeMonth } from '../../engine/summarize';
-import { classify, displayVendor } from '../../engine/classify';
+import {
+  classify,
+  displayVendor,
+  planRuleUpdate,
+  ruleMatchFor,
+  suggestRuleForStored,
+} from '../../engine/classify';
 import { formatKc } from '../../engine/money';
 import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
 import { formatDayMonth, formatMonthLabel, shiftMonth } from '../../utils/dates';
+import { newId } from '../../utils/id';
 import { CategoryPicker } from '../shared/CategoryPicker';
 import styles from './MonthView.module.css';
+
+/** A staged category change awaiting confirmation, with its rule offer. */
+interface PendingChange {
+  txId: string;
+  categoryId: string;
+  addRule: boolean;
+  pattern: string;
+  field: RuleField | null;
+  suggestedPattern: string;
+}
 
 /** Fraction 0–1 of a budget spent, clamped for the progress bar width. */
 function progressFraction(spent: number, budget: number): number {
@@ -27,12 +44,15 @@ export function MonthView() {
   const saveTransaction = useDataStore((s) => s.saveTransaction);
   const saveTransactions = useDataStore((s) => s.saveTransactions);
   const deleteTransaction = useDataStore((s) => s.deleteTransaction);
+  const saveRules = useDataStore((s) => s.saveRules);
   const rules = useDataStore((s) => s.rules);
   const saving = useDataStore((s) => s.saving);
 
   const [viewedMonth, setViewedMonth] = useState(currentMonthKey);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [autoResult, setAutoResult] = useState<string | null>(null);
+  // A category change staged in the inline editor, with its rule offer.
+  const [pending, setPending] = useState<PendingChange | null>(null);
   // Category drill-downs open in budget-vs-actual (several may be open at once).
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   // The full transaction list is collapsed by default; unclassified stay pinned.
@@ -91,10 +111,71 @@ export function MonthView() {
     await saveTransaction({ ...tx, categoryId });
   }
 
+  /**
+   * The inline editor's category pick. Bank rows changing to a real category
+   * STAGE the change with a rule offer (correction = learning, ARCHITECTURE.md
+   * §6); cash/manual rows and un-categorizing save immediately as before —
+   * there is no vendor to learn from those.
+   */
+  function pickCategory(tx: Transaction, categoryId: string | null) {
+    const learnable = tx.source !== 'cash' && tx.source !== 'manual';
+    if (!learnable || categoryId === null || categoryId === tx.categoryId) {
+      setPending(null);
+      void setCategory(tx, categoryId);
+      return;
+    }
+    const s = suggestRuleForStored(tx, categoryId);
+    setPending({
+      txId: tx.id,
+      categoryId,
+      addRule: s !== null,
+      pattern: s?.pattern ?? '',
+      field: s?.field ?? null,
+      suggestedPattern: s?.pattern ?? '',
+    });
+  }
+
+  /** Confirm a staged change: save the transaction, then the rule (if kept). */
+  async function confirmPending(tx: Transaction) {
+    if (!pending || pending.txId !== tx.id) {
+      return;
+    }
+    const ok = await saveTransaction({ ...tx, categoryId: pending.categoryId });
+    if (!ok) {
+      return;
+    }
+    const wantRule = pending.addRule && pending.field !== null && pending.pattern.trim() !== '';
+    if (wantRule && pending.field !== null) {
+      const target: Rule = {
+        id: newId('rule'),
+        field: pending.field,
+        match: ruleMatchFor(pending.field, pending.pattern, pending.suggestedPattern),
+        pattern: pending.pattern.trim(),
+        categoryId: pending.categoryId,
+        createdFrom: displayVendor(tx),
+      };
+      // planRuleUpdate retargets/outranks any older rule that classified this
+      // row wrongly; saveRules prepends new rules so the correction wins.
+      const savedRule = await saveRules(planRuleUpdate(rules, tx, target));
+      if (savedRule) {
+        // No auto-reclassification here — surface the explicit button instead.
+        const remaining = unclassified.filter((t) => t.id !== tx.id).length;
+        setAutoResult(
+          remaining > 0
+            ? `Rule saved — ${remaining} unclassified row${remaining === 1 ? '' : 's'} can be auto-classified.`
+            : 'Rule saved — future imports will use it.',
+        );
+      }
+    }
+    setPending(null);
+    setEditingId(null);
+  }
+
   async function remove(tx: Transaction) {
     const ok = await deleteTransaction(viewedMonth, tx.id);
     if (ok) {
       setEditingId(null);
+      setPending(null);
     }
   }
 
@@ -137,12 +218,16 @@ export function MonthView() {
     const primary = primaryLine(tx);
     // Secondary context: show the full description unless it IS the primary.
     const secondary = tx.description.trim() !== primary ? tx.description.trim() : '';
+    const staged = pending && pending.txId === tx.id ? pending : null;
     return (
       <li key={tx.id} className={styles.txItem}>
         <button
           type="button"
           className={styles.txRow}
-          onClick={() => setEditingId(editing ? null : tx.id)}
+          onClick={() => {
+            setPending(null);
+            setEditingId(editing ? null : tx.id);
+          }}
           aria-expanded={editing}
         >
           <span className={styles.txMain}>
@@ -169,19 +254,90 @@ export function MonthView() {
             </label>
             <CategoryPicker
               id={`cat-${tx.id}`}
-              value={tx.categoryId}
-              onChange={(categoryId) => void setCategory(tx, categoryId)}
+              value={staged ? staged.categoryId : tx.categoryId}
+              onChange={(categoryId) => pickCategory(tx, categoryId)}
               categories={categories}
               includeNone
             />
-            <button
-              type="button"
-              className={styles.deleteBtn}
-              onClick={() => void remove(tx)}
-              disabled={saving}
-            >
-              Delete transaction
-            </button>
+
+            {staged && (
+              <>
+                {staged.field !== null && (
+                  <div className={styles.ruleBox}>
+                    <label className={styles.ruleRow} htmlFor={`rule-${tx.id}`}>
+                      <input
+                        id={`rule-${tx.id}`}
+                        type="checkbox"
+                        checked={staged.addRule}
+                        onChange={(e) =>
+                          setPending((p) => (p ? { ...p, addRule: e.target.checked } : p))
+                        }
+                      />
+                      <span>
+                        Always classify <strong>{displayVendor(tx)}</strong> as{' '}
+                        <strong>{categoryName(staged.categoryId)}</strong>
+                      </span>
+                    </label>
+                    {staged.addRule && (
+                      <div className={styles.patternRow}>
+                        <label className={styles.editorLabel} htmlFor={`rule-pat-${tx.id}`}>
+                          matching text
+                        </label>
+                        <input
+                          id={`rule-pat-${tx.id}`}
+                          className={styles.patternInput}
+                          type="text"
+                          autoComplete="off"
+                          value={staged.pattern}
+                          onChange={(e) =>
+                            setPending((p) => (p ? { ...p, pattern: e.target.value } : p))
+                          }
+                          aria-invalid={staged.pattern.trim() === ''}
+                        />
+                        <span
+                          className={
+                            staged.pattern.trim() === '' ? styles.patternError : styles.patternHint
+                          }
+                          role={staged.pattern.trim() === '' ? 'alert' : undefined}
+                        >
+                          {staged.pattern.trim() === ''
+                            ? 'Enter the text to match — the rule is skipped while this is empty.'
+                            : 'Shorten it to match more (e.g. just the shop name).'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className={styles.editorActions}>
+                  <button
+                    type="button"
+                    className={styles.confirmBtn}
+                    onClick={() => void confirmPending(tx)}
+                    disabled={saving}
+                  >
+                    {saving ? 'Saving…' : 'Save change'}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.cancelBtn}
+                    onClick={() => setPending(null)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+
+            {!staged && (
+              <button
+                type="button"
+                className={styles.deleteBtn}
+                onClick={() => void remove(tx)}
+                disabled={saving}
+              >
+                Delete transaction
+              </button>
+            )}
           </div>
         )}
       </li>

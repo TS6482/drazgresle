@@ -3,7 +3,11 @@ import {
   classify,
   displayVendor,
   extractMerchant,
+  matchingRule,
+  planRuleUpdate,
+  ruleMatchFor,
   suggestRule,
+  suggestRuleForStored,
   type ClassifiableTransaction,
 } from './classify';
 import type { Rule } from '../types/data';
@@ -265,5 +269,176 @@ describe('suggestRule', () => {
     const source = tx({ counterpartyAccount: '9876543210/0300' });
     const r = suggestRule(source, 'salary');
     expect(classify(source, [r as Rule])).toBe('salary');
+  });
+});
+
+describe('suggestRuleForStored', () => {
+  it('uses the merchant rule for card rows, like import', () => {
+    const r = suggestRuleForStored(
+      {
+        counterparty: 'Jan Novák',
+        description: 'BURGER PALACE OC PLAZA 12, BRNO, 60200',
+        bankType: 'Platba kartou',
+      },
+      'eating-out',
+    );
+    expect(r).toMatchObject({
+      field: 'description',
+      match: 'contains',
+      pattern: 'BURGER PALACE OC PLAZA 12',
+    });
+  });
+
+  it('prefers a description merchant over the counterparty for NON-card rows', () => {
+    // Stored rows may be old imports without bankType — the counterparty could
+    // still be the cardholder, so description patterns are the safer default.
+    const r = suggestRuleForStored(
+      { counterparty: 'Jan Novák', description: 'CINEMA CITY 04, PRAHA, 15000' },
+      'fun',
+    );
+    expect(r).toMatchObject({
+      field: 'description',
+      match: 'contains',
+      pattern: 'CINEMA CITY 04',
+    });
+  });
+
+  it('falls back to counterparty-exact when the description is empty', () => {
+    const r = suggestRuleForStored(
+      { counterparty: 'ACME CORP', description: '', bankType: 'Příchozí úhrada' },
+      'salary',
+    );
+    expect(r).toMatchObject({ field: 'counterparty', match: 'exact', pattern: 'ACME CORP' });
+  });
+
+  it('returns null when nothing is usable', () => {
+    expect(suggestRuleForStored({ counterparty: '', description: '' }, 'c')).toBeNull();
+    expect(
+      suggestRuleForStored(
+        { counterparty: 'Jan Novák', description: '', bankType: 'Platba kartou' },
+        'c',
+      ),
+    ).toBeNull();
+  });
+});
+
+describe('ruleMatchFor', () => {
+  it('keeps accounts exact, descriptions contains', () => {
+    expect(ruleMatchFor('counterpartyAccount', 'anything', 'anything')).toBe('exact');
+    expect(ruleMatchFor('description', 'SHOP', 'SHOP CITY 1')).toBe('contains');
+  });
+
+  it('counterparty stays exact only while the pattern is untouched', () => {
+    expect(ruleMatchFor('counterparty', 'ACME CORP', 'ACME CORP')).toBe('exact');
+    expect(ruleMatchFor('counterparty', 'acme corp ', 'ACME CORP')).toBe('exact');
+    expect(ruleMatchFor('counterparty', 'ACME', 'ACME CORP')).toBe('contains');
+  });
+});
+
+describe('matchingRule', () => {
+  it('returns the winning rule object (exact pass first)', () => {
+    const rules = [
+      rule({ id: 'a', field: 'description', match: 'contains', pattern: 'acme', categoryId: 'c1' }),
+      rule({ id: 'b', field: 'counterparty', match: 'exact', pattern: 'ACME Corp', categoryId: 'c2' }),
+    ];
+    expect(matchingRule(tx(), rules)?.id).toBe('b');
+    expect(matchingRule(tx({ counterparty: 'other', description: 'other' }), rules)).toBeNull();
+  });
+});
+
+describe('planRuleUpdate', () => {
+  /** Mirror the store merge the planner documents: update known, prepend new. */
+  function applyUpserts(rules: Rule[], upserts: Rule[]): Rule[] {
+    const byId = new Map(rules.map((r) => [r.id, r]));
+    const fresh: Rule[] = [];
+    for (const u of upserts) {
+      if (byId.has(u.id)) {
+        byId.set(u.id, u);
+      } else {
+        fresh.push(u);
+      }
+    }
+    return [...fresh, ...byId.values()];
+  }
+
+  const row: ClassifiableTransaction = {
+    counterparty: 'Jan Novák',
+    description: 'CINEMA CITY 04, PRAHA, 15000',
+    bankType: 'Platba kartou',
+  };
+
+  it('retargets an existing same-pattern rule in place (no duplicate)', () => {
+    const old = rule({
+      id: 'old',
+      field: 'description',
+      match: 'contains',
+      pattern: 'cinema city 04',
+      categoryId: 'wrong-cat',
+    });
+    const target = suggestRuleForStored(row, 'fun') as Rule;
+    const upserts = planRuleUpdate([old], row, target);
+    expect(upserts).toHaveLength(1);
+    expect(upserts[0].id).toBe('old'); // updated, not duplicated
+    expect(upserts[0].categoryId).toBe('fun');
+    expect(classify(row, applyUpserts([old], upserts))).toBe('fun');
+  });
+
+  it('a new rule prepends and beats an older contains rule of the same class', () => {
+    const old = rule({
+      id: 'old',
+      field: 'description',
+      match: 'contains',
+      pattern: 'cinema',
+      categoryId: 'wrong-cat',
+    });
+    const target: Rule = {
+      id: 'new',
+      field: 'description',
+      match: 'contains',
+      pattern: 'CINEMA CITY',
+      categoryId: 'fun',
+    };
+    const upserts = planRuleUpdate([old], row, target);
+    expect(upserts).toHaveLength(1);
+    const merged = applyUpserts([old], upserts);
+    expect(merged[0].id).toBe('new'); // prepended
+    expect(classify(row, merged)).toBe('fun'); // old no longer wins
+  });
+
+  it('retargets an exact old winner that would still outrank a contains correction', () => {
+    // The wrong classification came from a counterparty-exact rule; the
+    // correction is a merchant contains rule, which exact would still beat.
+    const old = rule({
+      id: 'old',
+      field: 'counterparty',
+      match: 'exact',
+      pattern: 'Jan Novák',
+      categoryId: 'wrong-cat',
+    });
+    const target: Rule = {
+      id: 'new',
+      field: 'description',
+      match: 'contains',
+      pattern: 'CINEMA CITY',
+      categoryId: 'fun',
+    };
+    const upserts = planRuleUpdate([old], row, target);
+    expect(upserts).toHaveLength(2);
+    expect(upserts[1]).toMatchObject({ id: 'old', categoryId: 'fun' });
+    expect(classify(row, applyUpserts([old], upserts))).toBe('fun');
+  });
+
+  it('does not retarget anything when the pattern no longer matches this row', () => {
+    // The user broadened/changed the pattern to target future imports only.
+    const target: Rule = {
+      id: 'new',
+      field: 'description',
+      match: 'contains',
+      pattern: 'SOMETHING ELSE',
+      categoryId: 'fun',
+    };
+    const upserts = planRuleUpdate([], row, target);
+    expect(upserts).toHaveLength(1);
+    expect(upserts[0].id).toBe('new');
   });
 });

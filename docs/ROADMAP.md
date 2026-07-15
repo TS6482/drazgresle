@@ -62,6 +62,12 @@ Statuses: `[ ]` todo · `[~]` in progress · `[x]` done.
       in-place form; slugified collision-safe id; saves via the structured merge and selects the
       result) — works mid-import without losing review progress, and in MonthView/AddCash too.
       *(User request 2026-07-15.)*
+- [x] Correction = learning in MonthView (completes ARCHITECTURE §6): re-categorizing a bank
+      row stages the change with the same "Always classify…" checkbox + editable pattern as
+      import review; stored rows default to description/merchant patterns (counterparty may be
+      the cardholder); `planRuleUpdate` retargets or outranks the old rule that misclassified
+      the row (rules merge prepends new rules so newer intent wins); after saving, an explicit
+      hint points at the Auto-classify button instead of silent re-classification.
 - [x] Statement-driven balance for the **Air Bank** account (`statementSource` flag on
       checking/savings): latest imported statement's ending balance pre-fills its snapshot
       balance, editable, with a `from statement <date>` hint. *(Phase 2b.)*

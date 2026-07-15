@@ -8,7 +8,7 @@ import {
   type ParsedTransaction,
 } from '../../engine/parsers/airbank';
 import { importHash } from '../../engine/importHash';
-import { classify, displayVendor, suggestRule } from '../../engine/classify';
+import { classify, displayVendor, ruleMatchFor, suggestRule } from '../../engine/classify';
 import { formatKc } from '../../engine/money';
 import { monthKey } from '../../engine/summarize';
 import { useDataStore } from '../../store/data';
@@ -67,19 +67,6 @@ interface CommitResult {
   monthsTouched: string[];
 }
 
-/** The match mode a learned rule uses: account rules stay exact; a counterparty
- *  rule stays exact only while its pattern is untouched (shortening it implies
- *  substring matching); merchant/description rules are always contains. */
-function matchFor(field: RuleField, pattern: string, suggested: string): Rule['match'] {
-  if (field === 'counterpartyAccount') {
-    return 'exact';
-  }
-  if (field === 'counterparty') {
-    return pattern.trim().toLowerCase() === suggested.trim().toLowerCase() ? 'exact' : 'contains';
-  }
-  return 'contains';
-}
-
 /** Build the pending (not yet saved) rule from a decision, or null. */
 function pendingRuleFrom(
   field: RuleField | null,
@@ -95,7 +82,7 @@ function pendingRuleFrom(
   return {
     id: newId('rule'),
     field,
-    match: matchFor(field, pattern, suggested),
+    match: ruleMatchFor(field, pattern, suggested),
     pattern: pattern.trim(),
     categoryId,
     createdFrom,

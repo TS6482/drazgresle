@@ -134,25 +134,33 @@ function ruleMatches(rule: Rule, tx: ClassifiableTransaction): boolean {
 }
 
 /**
- * The category id the rules assign to a transaction, or `null` if none match.
+ * The rule `classify` would apply to a transaction, or `null` when none match.
  * `exact` rules are considered before `contains`; the first matching rule in
  * file order wins within each pass.
  */
-export function classify(tx: ClassifiableTransaction, rules: Rule[]): string | null {
+export function matchingRule(tx: ClassifiableTransaction, rules: Rule[]): Rule | null {
   for (const rule of rules) {
     // Account rules and explicit `exact` rules form the high-priority pass.
     const isExact = rule.field === 'counterpartyAccount' || rule.match === 'exact';
     if (isExact && ruleMatches(rule, tx)) {
-      return rule.categoryId;
+      return rule;
     }
   }
   for (const rule of rules) {
     const isExact = rule.field === 'counterpartyAccount' || rule.match === 'exact';
     if (!isExact && ruleMatches(rule, tx)) {
-      return rule.categoryId;
+      return rule;
     }
   }
   return null;
+}
+
+/**
+ * The category id the rules assign to a transaction, or `null` if none match.
+ * Precedence is decided by {@link matchingRule}.
+ */
+export function classify(tx: ClassifiableTransaction, rules: Rule[]): string | null {
+  return matchingRule(tx, rules)?.categoryId ?? null;
 }
 
 /**
@@ -216,4 +224,116 @@ export function suggestRule(
     };
   }
   return null;
+}
+
+/**
+ * Rule suggestion for a STORED transaction (a MonthView correction rather than
+ * an import review). Stored rows never carry `counterpartyAccount`, and rows
+ * imported before `bankType` existed lack that too — so for an Air Bank row
+ * the counterparty may well be the cardholder even when we cannot prove it.
+ * Description-based merchant patterns are therefore the safer default here:
+ *
+ * 1. Card rows (bankType says so) → merchant `contains` rule, as on import.
+ * 2. Any row whose description yields a merchant → description `contains`.
+ * 3. Otherwise → counterparty exact.
+ *
+ * The editable pattern input in the UI is the user's control over how broad
+ * the rule is. Returns `null` when nothing usable exists.
+ */
+export function suggestRuleForStored(
+  tx: ClassifiableTransaction,
+  categoryId: string,
+): Rule | null {
+  if (isCardRow(tx)) {
+    return suggestRule(tx, categoryId);
+  }
+  const merchant = extractMerchant(tx.description);
+  if (merchant) {
+    return {
+      id: newId('rule'),
+      field: 'description',
+      match: 'contains',
+      pattern: merchant,
+      categoryId,
+      createdFrom: tx.description,
+    };
+  }
+  const counterparty = tx.counterparty.trim();
+  if (counterparty) {
+    return {
+      id: newId('rule'),
+      field: 'counterparty',
+      match: 'exact',
+      pattern: counterparty,
+      categoryId,
+      createdFrom: tx.counterparty,
+    };
+  }
+  return null;
+}
+
+/**
+ * The match mode a user-confirmed rule should use: account rules stay exact;
+ * a counterparty rule stays exact only while its pattern is untouched
+ * (shortening it implies substring matching); description/merchant rules are
+ * always `contains`. Shared by the import review and the MonthView editor.
+ */
+export function ruleMatchFor(
+  field: RuleField,
+  pattern: string,
+  suggested: string,
+): Rule['match'] {
+  if (field === 'counterpartyAccount') {
+    return 'exact';
+  }
+  if (field === 'counterparty') {
+    return pattern.trim().toLowerCase() === suggested.trim().toLowerCase()
+      ? 'exact'
+      : 'contains';
+  }
+  return 'contains';
+}
+
+/**
+ * The rule upserts needed so that `target` decides `tx`'s category from now on
+ * — the "correction = learning" path when a rule may already exist (possibly
+ * the one that classified `tx` wrongly).
+ *
+ * Semantics (mirrors the store's rules merge, which UPDATES known ids in place
+ * and PREPENDS unknown ids so newer intent outranks older rules of the same
+ * match class):
+ *
+ * 1. A rule with the same field+pattern (case-insensitive) is retargeted in
+ *    place — no duplicate rule is created.
+ * 2. Otherwise `target` is a new rule; prepending lets it win every tie
+ *    within its match class.
+ * 3. If after that an OLD rule would still outrank the result for this
+ *    transaction (an `exact` rule beats a new `contains` — e.g. the wrong
+ *    classification came from a counterparty-exact rule while the correction
+ *    is a merchant rule), that winning rule is retargeted too. Exact rules
+ *    are vendor-specific by construction, so retargeting them is safe.
+ */
+export function planRuleUpdate(
+  rules: Rule[],
+  tx: ClassifiableTransaction,
+  target: Rule,
+): Rule[] {
+  const patternKey = target.pattern.trim().toLowerCase();
+  const existing = rules.find(
+    (r) => r.field === target.field && r.pattern.trim().toLowerCase() === patternKey,
+  );
+  const applied: Rule = existing
+    ? { ...existing, match: target.match, categoryId: target.categoryId }
+    : target;
+  const upserts: Rule[] = [applied];
+
+  // Simulate the store merge (update in place / prepend new) and check who wins.
+  const simulated = existing
+    ? rules.map((r) => (r.id === existing.id ? applied : r))
+    : [applied, ...rules];
+  const winner = matchingRule(tx, simulated);
+  if (winner && winner.categoryId !== target.categoryId) {
+    upserts.push({ ...winner, categoryId: target.categoryId });
+  }
+  return upserts;
 }
