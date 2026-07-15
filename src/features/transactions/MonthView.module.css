@@ -134,13 +134,15 @@
   gap: var(--space-2);
 }
 
+/* Each area is ONE card; its subcategories live inside the same box. */
 .areaGroup {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
-/* Area accordion header: a thumb-sized card button summarising the area. */
+/* Area accordion header: fills the top of the card, no card chrome of its own. */
 .areaHeader {
   display: flex;
   flex-direction: column;
@@ -149,9 +151,10 @@
   min-height: 44px;
   margin: 0;
   padding: var(--space-3);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  background: transparent;
+  border: none;
+  /* Reserved divider so opening doesn't shift layout; shown when expanded. */
+  border-bottom: 1px solid transparent;
   color: inherit;
   font: inherit;
   text-align: left;
@@ -159,7 +162,7 @@
 }
 
 .areaHeader[aria-expanded='true'] {
-  border-color: var(--color-primary);
+  border-bottom-color: var(--color-border);
 }
 
 /* Slightly heavier than a category name to set the area above its categories. */
@@ -167,9 +170,26 @@
   font-weight: 700;
 }
 
-/* The category rows revealed under an area — indented to show nesting. */
+/* The subcategory rows revealed inside the area card — an inset panel so they
+   read as contained within the box. */
 .areaCategories {
-  padding-left: var(--space-3);
+  padding: var(--space-1) var(--space-3) var(--space-2);
+  background: var(--color-surface-alt);
+  gap: 0;
+}
+
+/* Subcategory rows inside an area: not their own cards — flat rows separated by
+   hairlines, so the whole area is one tidy box. (The Saving section's rows keep
+   the standalone card style.) */
+.areaCategories .budgetRow {
+  padding: var(--space-2) 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.areaCategories .budgetRow + .budgetRow {
+  border-top: 1px solid var(--color-border);
 }
 
 .budgetRow {
