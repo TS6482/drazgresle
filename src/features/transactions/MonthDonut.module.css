@@ -6,9 +6,12 @@
   --slice-saved: #1baf7a;
   --slice-leftover: #2a78d6;
 
+  /* Ring on the left, slice detail on the right — the detail sits BESIDE the
+     ring, never as a tooltip over it. Wraps to stacked on very narrow screens. */
   display: flex;
-  flex-direction: column;
+  flex-flow: row wrap;
   align-items: center;
+  justify-content: center;
   gap: var(--space-3);
   padding: var(--space-3) 0;
 }
@@ -23,12 +26,13 @@
 
 .ringWrap {
   position: relative;
-  width: 100%;
-  max-width: 260px;
+  flex: 0 0 auto;
+  width: 180px;
+  max-width: 100%;
 }
 
 /* Income total centred in the hole. pointer-events:none so it never blocks the
-   chart; the ring carries no interaction anyway. */
+   chart; the ring's slices carry the hover/tap. */
 .center {
   position: absolute;
   inset: 0;
@@ -42,7 +46,7 @@
 /* Smaller than the summary figures so the income total fits inside the hole
    without overflowing, even for seven-figure incomes. */
 .centerValue {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -54,35 +58,41 @@
   color: var(--color-text-muted);
 }
 
-.hint {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
-/* Slice tooltip (hover / tap) */
-.tooltip {
+/* Detail panel beside the ring — shows the hovered/tapped slice. */
+.detail {
+  flex: 1 1 130px;
+  min-width: 120px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: var(--space-2) var(--space-3);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  gap: var(--space-1);
 }
 
-.tooltipName {
+.detailHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-weight: 600;
-  font-size: var(--text-sm);
 }
 
-.tooltipValue {
+.detailSwatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.detailValue {
+  font-size: var(--text-lg);
   font-variant-numeric: tabular-nums;
   color: var(--color-text);
 }
 
-.tooltipPct {
+.detailPct {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.detailHint {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }

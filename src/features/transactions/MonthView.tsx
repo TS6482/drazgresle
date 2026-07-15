@@ -42,7 +42,7 @@ export function MonthView() {
   const budgets = useDataStore((s) => s.budgets);
   const months = useDataStore((s) => s.months);
   const monthsLoaded = useDataStore((s) => s.monthsLoaded);
-  const currentMonthKey = useDataStore((s) => s.currentMonthKey);
+  const defaultMonthKey = useDataStore((s) => s.defaultMonthKey);
   const loadMonth = useDataStore((s) => s.loadMonth);
   const saveTransaction = useDataStore((s) => s.saveTransaction);
   const saveTransactions = useDataStore((s) => s.saveTransactions);
@@ -51,7 +51,7 @@ export function MonthView() {
   const rules = useDataStore((s) => s.rules);
   const saving = useDataStore((s) => s.saving);
 
-  const [viewedMonth, setViewedMonth] = useState(currentMonthKey);
+  const [viewedMonth, setViewedMonth] = useState(defaultMonthKey);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [autoResult, setAutoResult] = useState<string | null>(null);
   // A category change staged in the inline editor, with its rule offer.

@@ -8,7 +8,7 @@ import {
 import type { GithubClient } from '../api/github';
 import { useSessionStore } from './session';
 import { monthKey } from '../engine/summarize';
-import { todayIso } from '../utils/dates';
+import { shiftMonth, todayIso } from '../utils/dates';
 import type {
   Account,
   AccountsFile,
@@ -289,6 +289,9 @@ interface DataState {
   monthStatements: Record<string, StatementMeta[]>;
   /** `'YYYY-MM'` for today, resolved at load time. */
   currentMonthKey: string;
+  /** The default month to VIEW — the prior month, since statements are always
+   *  imported for months that have finished. Preloaded on connect. */
+  defaultMonthKey: string;
 
   accountsSha: string | null;
   snapshotsSha: string | null;
@@ -352,6 +355,7 @@ const EMPTY_STATE = {
   months: {} as Record<string, Transaction[]>,
   monthStatements: {} as Record<string, StatementMeta[]>,
   currentMonthKey: monthKey(todayIso()),
+  defaultMonthKey: shiftMonth(monthKey(todayIso()), -1),
   accountsSha: null,
   snapshotsSha: null,
   categoriesSha: null,
@@ -408,7 +412,10 @@ export const useDataStore = create<DataState>((set, get) => {
       if (!client) {
         return;
       }
-      const mk = monthKey(todayIso());
+      const today = monthKey(todayIso());
+      // Preload the DEFAULT view month (the prior month) — that's what Home and
+      // the Month view open to, since statements land for finished months.
+      const mk = shiftMonth(today, -1);
       set({ loading: true, error: null });
       try {
         const [accountsFile, snapshotsFile, categoriesFile, budgetsFile, settingsFile, rulesFile, monthFile] =
@@ -435,7 +442,8 @@ export const useDataStore = create<DataState>((set, get) => {
           settingsSha: settingsFile?.sha ?? null,
           rules: rulesFile?.data.rules ?? [],
           rulesSha: rulesFile?.sha ?? null,
-          currentMonthKey: mk,
+          currentMonthKey: today,
+          defaultMonthKey: mk,
           months: { [mk]: sortTransactions(monthFile?.data.transactions ?? []) },
           monthStatements: { [mk]: monthFile?.data.statements ?? [] },
           monthShas: { [mk]: monthFile?.sha ?? null },
@@ -702,7 +710,11 @@ export const useDataStore = create<DataState>((set, get) => {
     },
 
     reset: () => {
-      set({ ...EMPTY_STATE, currentMonthKey: monthKey(todayIso()) });
+      set({
+        ...EMPTY_STATE,
+        currentMonthKey: monthKey(todayIso()),
+        defaultMonthKey: shiftMonth(monthKey(todayIso()), -1),
+      });
     },
   };
 });

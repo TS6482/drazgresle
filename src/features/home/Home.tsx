@@ -18,12 +18,12 @@ export function Home() {
   const categories = useDataStore((s) => s.categories);
   const budgets = useDataStore((s) => s.budgets);
   const months = useDataStore((s) => s.months);
-  const currentMonthKey = useDataStore((s) => s.currentMonthKey);
+  const defaultMonthKey = useDataStore((s) => s.defaultMonthKey);
   const loading = useDataStore((s) => s.loading);
 
   const transactions = useMemo(
-    () => months[currentMonthKey] ?? [],
-    [months, currentMonthKey],
+    () => months[defaultMonthKey] ?? [],
+    [months, defaultMonthKey],
   );
 
   const byId = useMemo(
@@ -32,8 +32,8 @@ export function Home() {
   );
 
   const summary = useMemo(
-    () => summarizeMonth(transactions, categories, budgets, currentMonthKey),
-    [transactions, categories, budgets, currentMonthKey],
+    () => summarizeMonth(transactions, categories, budgets, defaultMonthKey),
+    [transactions, categories, budgets, defaultMonthKey],
   );
 
   // SPENDING budgets only — savings targets are floors to hit, not part of the
@@ -105,7 +105,7 @@ export function Home() {
 
       <div className={styles.card}>
         <div className={styles.cardTop}>
-          <span className={styles.cardLabel}>{formatMonthLabel(currentMonthKey)}</span>
+          <span className={styles.cardLabel}>{formatMonthLabel(defaultMonthKey)}</span>
           <button type="button" className={styles.link} onClick={() => navigate('/month')}>
             Details ›
           </button>

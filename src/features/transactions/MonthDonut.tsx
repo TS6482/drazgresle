@@ -1,9 +1,8 @@
-import { useMemo } from 'react';
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-import type { TooltipContentProps } from 'recharts';
+import { useMemo, useState } from 'react';
+import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import type { MonthSummary } from '../../engine/summarize';
 import { incomeAllocation } from '../../engine/allocation';
-import type { AllocationKey, AllocationSlice } from '../../engine/allocation';
+import type { AllocationKey } from '../../engine/allocation';
 import { formatKc } from '../../engine/money';
 import { formatPercent } from '../../engine/percent';
 import styles from './MonthDonut.module.css';
@@ -20,30 +19,18 @@ const SLICE_VAR: Record<AllocationKey, string> = {
   leftover: '--slice-leftover',
 };
 
-/** Per-slice tooltip: name, amount, and share of income. Shows on hover
- *  (desktop) or tap (phone). */
-function SliceTooltip({ active, payload }: TooltipContentProps) {
-  if (!active || !payload || payload.length === 0) {
-    return null;
-  }
-  const slice = payload[0].payload as AllocationSlice;
-  return (
-    <div className={styles.tooltip}>
-      <span className={styles.tooltipName}>{slice.label}</span>
-      <span className={styles.tooltipValue}>{formatKc(slice.halere)}</span>
-      <span className={styles.tooltipPct}>{formatPercent(slice.pct)} of income</span>
-    </div>
-  );
-}
-
 /**
  * A donut of where the month's income went — Spent / Saved / Left over, each a
- * share of income, with the income total in the centre. Months a pie can't
- * honestly show (no income, overspending, a savings withdrawal) render a plain
- * one-line explanation instead.
+ * share of income, with the income total in the centre. Hovering or tapping a
+ * slice shows its amount and share in the panel beside the ring (not a tooltip
+ * over the chart). Months a pie can't honestly show (no income, overspending, a
+ * savings withdrawal) render a plain one-line explanation instead.
  */
 export function MonthDonut({ summary }: MonthDonutProps) {
   const allocation = useMemo(() => incomeAllocation(summary), [summary]);
+  // Which slice's detail is shown beside the ring. Keyed by slice (not index)
+  // so it stays correct across month changes without a reset effect.
+  const [activeKey, setActiveKey] = useState<AllocationKey | null>(null);
 
   if (allocation.status === 'no-income') {
     return null;
@@ -66,14 +53,15 @@ export function MonthDonut({ summary }: MonthDonutProps) {
     );
   }
 
-  // Non-zero slices draw; zero slices are omitted from the ring but still listed
-  // in the legend at 0 %.
+  // Non-zero slices draw the ring; a zero slice is omitted from the ring but can
+  // still be shown in the detail panel (at 0 %).
   const drawn = allocation.slices.filter((s) => s.halere > 0);
+  const active = allocation.slices.find((s) => s.key === activeKey) ?? null;
 
   return (
     <div className={styles.donut}>
       <div className={styles.ringWrap}>
-        <ResponsiveContainer width="100%" height={180}>
+        <ResponsiveContainer width="100%" height={170}>
           <PieChart>
             <Pie
               data={drawn}
@@ -81,19 +69,21 @@ export function MonthDonut({ summary }: MonthDonutProps) {
               nameKey="label"
               cx="50%"
               cy="50%"
-              innerRadius={54}
-              outerRadius={80}
+              innerRadius={50}
+              outerRadius={76}
               startAngle={90}
               endAngle={-270}
               stroke="var(--color-surface)"
               strokeWidth={2}
               isAnimationActive={false}
+              onMouseEnter={(_, index) => setActiveKey(drawn[index]?.key ?? null)}
+              onMouseLeave={() => setActiveKey(null)}
+              onClick={(_, index) => setActiveKey(drawn[index]?.key ?? null)}
             >
               {drawn.map((s) => (
                 <Cell key={s.key} fill={`var(${SLICE_VAR[s.key]})`} />
               ))}
             </Pie>
-            <Tooltip content={(props) => <SliceTooltip {...props} />} />
           </PieChart>
         </ResponsiveContainer>
         <div className={styles.center}>
@@ -101,7 +91,25 @@ export function MonthDonut({ summary }: MonthDonutProps) {
           <span className={styles.centerLabel}>Income</span>
         </div>
       </div>
-      <p className={styles.hint}>Tap a slice for the amount and share.</p>
+
+      <div className={styles.detail}>
+        {active ? (
+          <>
+            <span className={styles.detailHead}>
+              <span
+                className={styles.detailSwatch}
+                style={{ background: `var(${SLICE_VAR[active.key]})` }}
+                aria-hidden="true"
+              />
+              {active.label}
+            </span>
+            <span className={styles.detailValue}>{formatKc(active.halere)}</span>
+            <span className={styles.detailPct}>{formatPercent(active.pct)} of income</span>
+          </>
+        ) : (
+          <span className={styles.detailHint}>Tap a slice to see its amount and share.</span>
+        )}
+      </div>
     </div>
   );
 }
