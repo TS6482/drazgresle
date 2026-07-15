@@ -3,6 +3,7 @@ import type { Account } from '../../types/data';
 import { classify } from '../../engine/networth';
 import { mortgageBalanceAt } from '../../engine/loan';
 import { formatKc } from '../../engine/money';
+import { formatPercent } from '../../engine/percent';
 import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
 import { todayIso } from '../../utils/dates';
@@ -20,6 +21,26 @@ function currentBalance(account: Account, balances: Record<string, number>): num
     return mortgageBalanceAt(account.loan, todayIso());
   }
   return null;
+}
+
+interface GainLoss {
+  /** Formatted "±X Kč (±Y %)" line. */
+  text: string;
+  positive: boolean;
+}
+
+/** Gain/loss vs purchase price, for property/other-asset with both figures. */
+function gainLoss(account: Account, balance: number | null): GainLoss | null {
+  if (!account.purchase || balance === null) {
+    return null;
+  }
+  const diff = balance - account.purchase.priceHalere;
+  const absText = (diff > 0 ? '+' : '') + formatKc(diff);
+  const pctText =
+    account.purchase.priceHalere !== 0
+      ? ` (${formatPercent((diff / account.purchase.priceHalere) * 100, { signed: true })})`
+      : '';
+  return { text: absText + pctText, positive: diff >= 0 };
 }
 
 export function Accounts() {
@@ -87,6 +108,7 @@ export function Accounts() {
           <ul className={styles.list}>
             {group.items.map((account) => {
               const balance = currentBalance(account, latestBalances);
+              const gain = gainLoss(account, balance);
               return (
                 <li key={account.id}>
                   <button
@@ -100,8 +122,17 @@ export function Accounts() {
                         {ACCOUNT_TYPE_LABELS[account.type]}
                       </span>
                     </span>
-                    <span className={styles.accountBalance}>
-                      {balance === null ? '—' : formatKc(balance)}
+                    <span className={styles.accountBalanceCol}>
+                      <span className={styles.accountBalance}>
+                        {balance === null ? '—' : formatKc(balance)}
+                      </span>
+                      {gain && (
+                        <span
+                          className={`${styles.gain} ${gain.positive ? styles.gainPos : styles.gainNeg}`}
+                        >
+                          {gain.text}
+                        </span>
+                      )}
                     </span>
                   </button>
                 </li>

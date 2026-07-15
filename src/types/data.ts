@@ -55,6 +55,18 @@ export interface FamilyLoan {
   plan: Record<string, number>;
 }
 
+/**
+ * What an asset originally cost. Meaningful only for `type === 'property'` or
+ * `'other-asset'` accounts (see §4): entered once, then the UI shows gain/loss
+ * against the latest snapshot value.
+ */
+export interface Purchase {
+  /** Price paid, in halere. */
+  priceHalere: number;
+  /** Date of purchase. */
+  date: IsoDate;
+}
+
 /** A single account in the registry. */
 export interface Account {
   id: string;
@@ -67,6 +79,8 @@ export interface Account {
   loan?: MortgageLoan;
   /** Present only when `type === 'family-loan'`. */
   familyLoan?: FamilyLoan;
+  /** Present only for `type === 'property'` or `'other-asset'`. */
+  purchase?: Purchase;
 }
 
 /** `accounts.json`. */

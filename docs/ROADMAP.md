@@ -44,6 +44,9 @@ Statuses: `[ ]` todo · `[~]` in progress · `[x]` done.
 - [ ] **Gate: user provides anonymized sample CSV exports from Air Bank and Raiffeisenbank CZ.**
 - [ ] Parsers: `airbank.ts`, `raiffeisen.ts` (windows-1250, header auto-detect) + tests.
 - [ ] Import wizard: upload → parse → dedupe (`importHash`) → auto-classify → review → commit.
+- [ ] Statement-driven balance for the **Air Bank** checking account: capture each statement's
+      starting/ending balance on import; ending balance pre-fills that account's snapshot
+      balance (editable). RB stays manual (user choice, 2026-07-15).
 - [ ] Rules engine: correction of ANY transaction offers a vendor rule for future imports
       (+ optional retroactive re-apply). Category management (seed ~10 coarse categories).
 - [ ] Budgets: default monthly target per category + per-month overrides; actual-vs-budget in
@@ -83,6 +86,13 @@ Monte Carlo · multi-currency · PSD2 bank connections · Czech UI translation �
 import.
 
 ## Decision log
+
+- 2026-07-15 — Account-entry refinements (user request): (1) Air Bank checking balance becomes
+  statement-driven in Phase 2 (ending balance from each imported statement pre-fills
+  snapshots; RB stays manual); (2) property + other-asset accounts carry purchase price+date,
+  the add form asks current value and writes it into today's snapshot, and the accounts list
+  shows gain/loss vs purchase; (3) family-loan plan table live-computes running remainder per
+  year + payoff/shortfall summary.
 
 - 2026-07-14 — Phase 0 naming: app is called **"Dražgrešle"**; repos `drazgresle` (public app)
   and `drazgresle-data` (private data) — deliberately inconspicuous public URL. Husband's

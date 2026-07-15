@@ -1,7 +1,16 @@
-import { useState } from 'react';
-import type { Account, AccountOwner, AccountType, FamilyLoan, MortgageLoan } from '../../types/data';
-import { parseKcInput } from '../../engine/money';
+import { useMemo, useState } from 'react';
+import type {
+  Account,
+  AccountOwner,
+  AccountType,
+  FamilyLoan,
+  MortgageLoan,
+  Purchase,
+  Snapshot,
+} from '../../types/data';
+import { formatKc, parseKcInput } from '../../engine/money';
 import { parsePercentInput } from '../../engine/percent';
+import { planProgress } from '../../engine/familyLoan';
 import { useDataStore } from '../../store/data';
 import { todayIso } from '../../utils/dates';
 import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ORDER } from '../shared/labels';
@@ -40,13 +49,29 @@ function planToRows(plan: Record<string, number> | undefined): PlanRow[] {
   return rows.length > 0 ? rows : [{ year: String(new Date().getFullYear()), amount: '' }];
 }
 
+/** Purchase price + gain/loss are meaningful only for these two asset types. */
+function isPurchaseType(type: AccountType): boolean {
+  return type === 'property' || type === 'other-asset';
+}
+
 export function AccountForm({ account, onDone }: AccountFormProps) {
   const saveAccounts = useDataStore((s) => s.saveAccounts);
+  const saveSnapshot = useDataStore((s) => s.saveSnapshot);
+  const snapshots = useDataStore((s) => s.snapshots);
   const saving = useDataStore((s) => s.saving);
+
+  const isCreating = account === undefined;
 
   const [name, setName] = useState(account?.name ?? '');
   const [type, setType] = useState<AccountType>(account?.type ?? 'checking');
   const [owner, setOwner] = useState<AccountOwner>(account?.owner ?? 'joint');
+
+  // Purchase fields (property / other-asset only). Date defaults blank so an
+  // untouched form stays "neither filled" — both are required together.
+  const [purchasePrice, setPurchasePrice] = useState(moneyToString(account?.purchase?.priceHalere));
+  const [purchaseDate, setPurchaseDate] = useState(account?.purchase?.date ?? '');
+  // Current value is offered only when CREATING — it seeds today's snapshot.
+  const [currentValue, setCurrentValue] = useState('');
 
   // Mortgage fields.
   const [principal, setPrincipal] = useState(moneyToString(account?.loan?.principalHalere));
@@ -70,6 +95,39 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
   const [planRows, setPlanRows] = useState<PlanRow[]>(planToRows(account?.familyLoan?.plan));
 
   const rateValid = parsePercentInput(annualRatePct) !== null;
+
+  // Purchase price + date are both-or-neither: a date without a price (or vice
+  // versa) is rejected, and a filled price must parse.
+  const priceFilled = purchasePrice.trim() !== '';
+  const dateFilled = purchaseDate.trim() !== '';
+  const purchaseValid =
+    (!priceFilled && !dateFilled) || (priceFilled && dateFilled && isMoneyValid(purchasePrice));
+  const currentValueValid = isMoneyValid(currentValue, true);
+
+  // Live repayment progress for the family-loan plan table. Unparsed rows
+  // (blank amount, non-4-digit year) are simply excluded — no crashes.
+  const planPreview = useMemo(() => {
+    const plan: Record<string, number> = {};
+    for (const row of planRows) {
+      const year = row.year.trim();
+      const halere = parseKcInput(row.amount);
+      if (/^\d{4}$/.test(year) && halere !== null) {
+        plan[year] = halere;
+      }
+    }
+    return planProgress(parseKcInput(outstanding) ?? 0, plan);
+  }, [planRows, outstanding]);
+
+  const remainderByYear = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const row of planPreview.rows) {
+      map.set(row.year, row.remainderHalere);
+    }
+    return map;
+  }, [planPreview]);
+
+  const lastPlannedYear =
+    planPreview.rows.length > 0 ? planPreview.rows[planPreview.rows.length - 1].year : null;
 
   function updatePlanRow(index: number, patch: Partial<PlanRow>) {
     setPlanRows((rows) => rows.map((r, i) => (i === index ? { ...r, ...patch } : r)));
@@ -102,6 +160,9 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
     }
     if (type === 'family-loan') {
       return isMoneyValid(outstanding) && famAsOf !== '';
+    }
+    if (isPurchaseType(type)) {
+      return purchaseValid && currentValueValid;
     }
     return true;
   })();
@@ -146,12 +207,40 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
         plan,
       };
       next.familyLoan = familyLoan;
+    } else if (isPurchaseType(type)) {
+      if (priceFilled && dateFilled) {
+        const price = parseKcInput(purchasePrice);
+        if (price !== null) {
+          const purchase: Purchase = { priceHalere: price, date: purchaseDate };
+          next.purchase = purchase;
+        }
+      }
     }
 
     const ok = await saveAccounts([next]);
-    if (ok) {
-      onDone();
+    if (!ok) {
+      return;
     }
+
+    // On create, an optional "current value" is recorded into today's snapshot —
+    // merged onto any existing snapshot for today so other balances survive.
+    if (isCreating && isPurchaseType(type) && currentValue.trim() !== '') {
+      const value = parseKcInput(currentValue);
+      if (value !== null) {
+        const today = todayIso();
+        const existing = snapshots.find((s) => s.date === today);
+        const snap: Snapshot = {
+          date: today,
+          balances: { ...(existing?.balances ?? {}), [next.id]: value },
+        };
+        if (existing?.note !== undefined) {
+          snap.note = existing.note;
+        }
+        await saveSnapshot(snap);
+      }
+    }
+
+    onDone();
   }
 
   async function handleDeactivate() {
@@ -218,11 +307,54 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
         </div>
       </div>
 
-      {type !== 'mortgage' && type !== 'family-loan' && (
+      {type !== 'mortgage' && type !== 'family-loan' && !isPurchaseType(type) && (
         <p className={styles.snapshotHint}>
           You&apos;ll enter this account&apos;s balance when you take a net-worth snapshot
           (Net worth tab).
         </p>
+      )}
+
+      {isPurchaseType(type) && (
+        <fieldset className={styles.fieldset}>
+          <legend className={styles.legend}>Purchase &amp; value (optional)</legend>
+          <MoneyInput
+            id="purchase-price"
+            label="Purchase price"
+            value={purchasePrice}
+            onChange={setPurchasePrice}
+            hint="What you originally paid — used to show gain/loss."
+            allowEmpty
+          />
+          <div className={forms.field}>
+            <label className={forms.label} htmlFor="purchase-date">
+              Purchase date
+            </label>
+            <input
+              id="purchase-date"
+              className={forms.input}
+              type="date"
+              value={purchaseDate}
+              onChange={(e) => setPurchaseDate(e.target.value)}
+              aria-invalid={!purchaseValid}
+            />
+            {!purchaseValid && (
+              <span className={forms.error} role="alert">
+                Enter both a purchase price and date, or leave both blank.
+              </span>
+            )}
+          </div>
+
+          {isCreating && (
+            <MoneyInput
+              id="current-value"
+              label="Current value"
+              value={currentValue}
+              onChange={setCurrentValue}
+              hint="Optional — recorded into today's snapshot."
+              allowEmpty
+            />
+          )}
+        </fieldset>
       )}
 
       {type === 'mortgage' && (
@@ -330,40 +462,57 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
           </div>
 
           <span className={forms.label}>Repayment plan (year → amount)</span>
-          {planRows.map((row, index) => (
-            <div className={styles.planRow} key={index}>
-              <input
-                className={forms.input}
-                type="text"
-                inputMode="numeric"
-                autoComplete="off"
-                aria-label="Year"
-                value={row.year}
-                onChange={(e) => updatePlanRow(index, { year: e.target.value })}
-                placeholder="2026"
-              />
-              <input
-                className={forms.input}
-                type="text"
-                inputMode="numeric"
-                aria-label="Planned amount"
-                value={row.amount}
-                onChange={(e) => updatePlanRow(index, { amount: e.target.value })}
-                placeholder="Amount"
-              />
-              <button
-                type="button"
-                className={styles.rowRemove}
-                onClick={() => removePlanRow(index)}
-                aria-label="Remove year"
-              >
-                ×
-              </button>
-            </div>
-          ))}
+          {planRows.map((row, index) => {
+            const year = row.year.trim();
+            const remainder = /^\d{4}$/.test(year) ? remainderByYear.get(year) : undefined;
+            return (
+              <div key={index}>
+                <div className={styles.planRow}>
+                  <input
+                    className={forms.input}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    aria-label="Year"
+                    value={row.year}
+                    onChange={(e) => updatePlanRow(index, { year: e.target.value })}
+                    placeholder="2026"
+                  />
+                  <input
+                    className={forms.input}
+                    type="text"
+                    inputMode="numeric"
+                    aria-label="Planned amount"
+                    value={row.amount}
+                    onChange={(e) => updatePlanRow(index, { amount: e.target.value })}
+                    placeholder="Amount"
+                  />
+                  <button
+                    type="button"
+                    className={styles.rowRemove}
+                    onClick={() => removePlanRow(index)}
+                    aria-label="Remove year"
+                  >
+                    ×
+                  </button>
+                </div>
+                {remainder !== undefined && (
+                  <span className={styles.planRemainder}>→ {formatKc(remainder)} left</span>
+                )}
+              </div>
+            );
+          })}
           <button type="button" className={forms.secondary} onClick={addPlanRow}>
             + Add year
           </button>
+
+          {planPreview.rows.length > 0 && (
+            <p className={styles.planSummary}>
+              {planPreview.summary.paidOffYear !== null
+                ? `Fully repaid in ${planPreview.summary.paidOffYear}.`
+                : `Still owing ${formatKc(planPreview.summary.shortfallHalere)} after ${lastPlannedYear}.`}
+            </p>
+          )}
         </fieldset>
       )}
 

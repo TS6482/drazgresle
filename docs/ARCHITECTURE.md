@@ -93,6 +93,12 @@ data/
                          #        family-loan|other-asset|other-liability
                          # mortgage accounts carry loan params (see below); property carries
                          # a manually-estimated value updated at snapshots
+                         # property + other-asset may carry purchase: {priceHalere, date} —
+                         # entered once; the UI shows gain/loss vs the latest snapshot value.
+                         # The Air Bank checking account is statement-driven from Phase 2 on:
+                         # each imported statement's ending balance pre-fills its snapshot
+                         # balance (editable, like the mortgage's computed value). The RB
+                         # account stays manual by user choice (2026-07-15).
   snapshots.json         # quarterly net-worth snapshots:
                          #   [{date, balances: {accountId: halere}, note?}]
                          # mortgage balance is computed by the loan model but stored per
@@ -139,7 +145,9 @@ freely chosen each year**. Modeled as a `family-loan` account:
 
 - Fields: current outstanding balance (known), payment month, and a **repayment plan** — an
   editable `{year: halere}` table (e.g. 2026: 150 000 Kč, 2027: 100 000 Kč …). Each year's
-  amount can be changed at any time.
+  amount can be changed at any time. While editing, the table **live-computes the running
+  remainder** after each year's payment plus a summary line ("fully repaid in 2031" / "still
+  owing X after the last planned year"), so the user never has to do the math (2026-07-15).
 - Counts as a **liability in net worth**, like the mortgage. Recording a payment (manual entry
   or matched from a statement) reduces the balance one-to-one; no interest math.
 - **Projections always use the plan table**, deducting each year's planned amount in the
