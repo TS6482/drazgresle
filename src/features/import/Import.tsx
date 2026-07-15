@@ -355,6 +355,11 @@ export function Import() {
       if (item.parsed.type !== '') {
         tx.bankType = item.parsed.type;
       }
+      // Persist the counterparty account so account-exact rules can match this
+      // row later (retroactive Auto-classify, inline corrections).
+      if (item.parsed.counterpartyAccount !== undefined) {
+        tx.counterpartyAccount = item.parsed.counterpartyAccount;
+      }
       ensure(item.bookingMonth).transactions.push(tx);
     }
 

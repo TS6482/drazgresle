@@ -228,14 +228,16 @@ export function suggestRule(
 
 /**
  * Rule suggestion for a STORED transaction (a MonthView correction rather than
- * an import review). Stored rows never carry `counterpartyAccount`, and rows
- * imported before `bankType` existed lack that too — so for an Air Bank row
- * the counterparty may well be the cardholder even when we cannot prove it.
- * Description-based merchant patterns are therefore the safer default here:
+ * an import review). Rows imported before `bankType`/`counterpartyAccount`
+ * were persisted lack both (not backfillable — the data is gone from the
+ * stored form) — so for an old Air Bank row the counterparty may well be the
+ * cardholder even when we cannot prove it. Description-based merchant patterns
+ * are therefore the safer default here:
  *
- * 1. Card rows (bankType says so) → merchant `contains` rule, as on import.
- * 2. Any row whose description yields a merchant → description `contains`.
- * 3. Otherwise → counterparty exact.
+ * 1. A persisted counterparty account → account-exact, as on import.
+ * 2. Card rows (bankType says so) → merchant `contains` rule, as on import.
+ * 3. Any row whose description yields a merchant → description `contains`.
+ * 4. Otherwise → counterparty exact.
  *
  * The editable pattern input in the UI is the user's control over how broad
  * the rule is. Returns `null` when nothing usable exists.
@@ -244,7 +246,8 @@ export function suggestRuleForStored(
   tx: ClassifiableTransaction,
   categoryId: string,
 ): Rule | null {
-  if (isCardRow(tx)) {
+  // suggestRule puts the account first and handles the card-row policy.
+  if (tx.counterpartyAccount?.trim() || isCardRow(tx)) {
     return suggestRule(tx, categoryId);
   }
   const merchant = extractMerchant(tx.description);

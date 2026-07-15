@@ -109,6 +109,14 @@ import.
 
 ## Decision log
 
+- 2026-07-15 — REVERSED the lunch-money decision after real use: transfers between Air Bank
+  and the RB lunch account are now plain **Transfer** (both directions — statements showed the
+  flow is mostly INTO Air Bank, which was distorting Eating out via refund netting). A second
+  Transfer rule added for the user's other own Air Bank account. Consequence accepted by user:
+  lunch spending is invisible in summaries (RB not imported). Data-repo rules + January rows
+  fixed directly; transactions now persist `counterpartyAccount` so account rules work
+  retroactively in the future.
+
 - 2026-07-15 — Import format pivot: both banks are **PDF-only** (user verified apps + desktop
   IB). Importer switches from CSV/PapaParse to client-side PDF parsing via lazy-loaded
   `pdfjs-dist`; statements never leave the device; PDF start/end balances feed the Air Bank

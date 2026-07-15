@@ -171,6 +171,14 @@ export interface Transaction {
    * field existed; classification treats a missing value as "not a card row".
    */
   bankType?: string;
+  /**
+   * The counterparty's account, normalized to `"1234567890/0800"`, when the
+   * statement carried one — lets account-exact rules match STORED rows (e.g.
+   * the retroactive Auto-classify). Absent on cash/manual entries and on rows
+   * imported before this field existed; those cannot be backfilled (the data
+   * is gone from the stored form) and simply never match account rules.
+   */
+  counterpartyAccount?: string;
 }
 
 /**

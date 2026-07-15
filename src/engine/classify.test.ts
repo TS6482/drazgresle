@@ -442,3 +442,50 @@ describe('planRuleUpdate', () => {
     expect(upserts[0].id).toBe('new');
   });
 });
+
+describe('stored transactions with a persisted counterpartyAccount', () => {
+  // Since Transaction now persists counterpartyAccount (normalized
+  // "number/bankCode"), account-exact rules must match stored rows — the
+  // retroactive Auto-classify path passes stored Transaction objects straight
+  // to classify(). Rows imported before the field existed simply lack it and
+  // never match account rules (not backfillable).
+  const storedTx = {
+    id: 't1',
+    date: '2026-07-02',
+    amountHalere: 6527200,
+    counterparty: 'ACME CORP',
+    description: 'VS9 / KS138 SALARY',
+    account: 'acc-airbank',
+    categoryId: null,
+    source: 'airbank' as const,
+    importHash: 'abcd1234',
+    bankType: 'Příchozí úhrada',
+    counterpartyAccount: '9876543210/0300',
+  };
+
+  it('an account-exact rule matches a stored transaction carrying the field', () => {
+    const rules = [
+      rule({ field: 'counterpartyAccount', match: 'exact', pattern: '9876543210/0300', categoryId: 'salary' }),
+    ];
+    expect(classify(storedTx, rules)).toBe('salary');
+    expect(matchingRule(storedTx, rules)?.categoryId).toBe('salary');
+  });
+
+  it('an old stored row without the field still works and just never matches', () => {
+    const oldRow = { ...storedTx, counterpartyAccount: undefined };
+    const rules = [
+      rule({ field: 'counterpartyAccount', match: 'exact', pattern: '9876543210/0300', categoryId: 'salary' }),
+    ];
+    expect(classify(oldRow, rules)).toBeNull();
+  });
+
+  it('suggestRuleForStored prefers the persisted account over everything else', () => {
+    const r = suggestRuleForStored(storedTx, 'salary');
+    expect(r).toMatchObject({
+      field: 'counterpartyAccount',
+      match: 'exact',
+      pattern: '9876543210/0300',
+      categoryId: 'salary',
+    });
+  });
+});
