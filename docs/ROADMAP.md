@@ -58,6 +58,10 @@ Statuses: `[ ]` todo · `[~]` in progress · `[x]` done.
       the first comma, pattern editable in review so "SHOP CITY 123…" → "SHOP"); review groups
       identical vendors into one decision with live propagation across the import; MonthView
       gains an explicit "Auto-classify N unclassified" retroactive re-apply (one write).
+- [x] Inline category creation in the shared CategoryPicker ("+ New category…" opens a compact
+      in-place form; slugified collision-safe id; saves via the structured merge and selects the
+      result) — works mid-import without losing review progress, and in MonthView/AddCash too.
+      *(User request 2026-07-15.)*
 - [x] Statement-driven balance for the **Air Bank** account (`statementSource` flag on
       checking/savings): latest imported statement's ending balance pre-fills its snapshot
       balance, editable, with a `from statement <date>` hint. *(Phase 2b.)*

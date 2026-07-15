@@ -95,11 +95,41 @@
   }
 }
 
+/* Wrapper for a picker plus anything it renders below itself (e.g. the
+   inline new-category form) — a plain vertical stack. */
+.pickerStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* Compact inline creation form, phone-first: stacked fields inside a subtly
+   emphasized box so it reads as part of the flow, not a new screen. */
+.inlineCreate {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.inlineCreate .field {
+  margin-bottom: var(--space-3);
+}
+
 /* Primary / secondary action buttons, thumb-sized. */
 .actions {
   display: flex;
   gap: var(--space-3);
   margin-top: var(--space-4);
+}
+
+/* Same button row without the top margin (inline forms). */
+.actionsTight {
+  display: flex;
+  gap: var(--space-3);
 }
 
 .primary,
