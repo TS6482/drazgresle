@@ -34,6 +34,18 @@
   border-color: var(--color-danger);
 }
 
+/* Native date controls (WebKit/Blink) can paint their text/spinner chrome
+   outside the laid-out box or refuse to shrink visually, overlapping their
+   neighbours even when the flex math fits. Strip the native appearance and
+   clip any overflow — scoped to date inputs only so text inputs keep their
+   alignment. min-height/padding come from .input, so iOS doesn't substitute
+   its default chrome sizing. */
+.input[type='date'] {
+  -webkit-appearance: none;
+  appearance: none;
+  overflow: hidden;
+}
+
 .moneyWrap {
   position: relative;
   display: flex;
@@ -71,6 +83,16 @@
 .row > .field {
   flex: 1 1 140px;
   min-width: 0;
+}
+
+/* On phones the two-up layout is abandoned entirely: every .row field is a
+   full-width stacked row, so overlap is impossible by construction (native
+   date controls were still painting over their neighbours despite the flex
+   math fitting). Two-up remains for wider screens only. */
+@media (max-width: 480px) {
+  .row > .field {
+    flex-basis: 100%;
+  }
 }
 
 /* Primary / secondary action buttons, thumb-sized. */
