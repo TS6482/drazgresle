@@ -8,7 +8,13 @@ import {
   type ParsedTransaction,
 } from '../../engine/parsers/airbank';
 import { importHash } from '../../engine/importHash';
-import { classify, displayVendor, ruleMatchFor, suggestRule } from '../../engine/classify';
+import {
+  classifiableFromParsed,
+  classify,
+  displayVendor,
+  ruleMatchFor,
+  suggestRule,
+} from '../../engine/classify';
 import { formatKc } from '../../engine/money';
 import { monthKey } from '../../engine/summarize';
 import { useDataStore } from '../../store/data';
@@ -235,7 +241,7 @@ export function Import() {
           parsed: p,
           importHash: hash,
           bookingMonth: monthKey(p.date),
-          autoCategoryId: classify(p, rules),
+          autoCategoryId: classify(classifiableFromParsed(p), rules),
         });
       }
 
@@ -246,7 +252,7 @@ export function Import() {
         if (item.autoCategoryId !== null) {
           continue;
         }
-        const s = suggestRule(item.parsed, 'x');
+        const s = suggestRule(classifiableFromParsed(item.parsed), 'x');
         const key = s ? `${s.field}|${s.pattern.toLowerCase()}` : `solo-${item.id}`;
         let g = groupMap.get(key);
         if (!g) {
@@ -292,7 +298,8 @@ export function Import() {
   }
 
   function editRow(item: ReviewItem, categoryId: string | null) {
-    const s = categoryId !== null ? suggestRule(item.parsed, categoryId) : null;
+    const s =
+      categoryId !== null ? suggestRule(classifiableFromParsed(item.parsed), categoryId) : null;
     setRowEdits((prev) => ({
       ...prev,
       [item.id]: {
@@ -559,12 +566,7 @@ export function Import() {
     const cat = effective.get(item.id) ?? null;
     // Lead with the vendor (merchant for card rows — the counterparty is just
     // the cardholder), same as the month view.
-    const vendor = displayVendor({
-      counterparty: p.counterparty,
-      description: p.description,
-      bankType: p.type,
-      counterpartyAccount: p.counterpartyAccount,
-    });
+    const vendor = displayVendor(classifiableFromParsed(p));
     return (
       <li key={item.id} className={styles.row}>
         <div className={styles.rowTop}>

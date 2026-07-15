@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  classifiableFromParsed,
   classify,
   displayVendor,
   extractMerchant,
@@ -20,6 +21,36 @@ const tx = (over: Partial<ClassifiableTransaction> = {}): ClassifiableTransactio
   counterparty: 'ACME Corp',
   description: 'SHOP ACME Praha 1',
   ...over,
+});
+
+describe('classifiableFromParsed', () => {
+  // Regression: the parser names the bank Typ `type`; the classifier reads
+  // `bankType`. Before the adapter, a parsed card row looked like a non-card row,
+  // so suggestRule keyed it on the CARDHOLDER counterparty and the import grouped
+  // every card payment by the person instead of the merchant.
+  it('maps the parser `type` to `bankType` so card rows learn a merchant rule', () => {
+    const parsed = {
+      counterparty: 'Jan Novák', // the cardholder — must NOT become the rule
+      description: 'BURGER PALACE OC PLAZA 12, Praha, 11000',
+      type: 'Platba kartou',
+    };
+    const suggestion = suggestRule(classifiableFromParsed(parsed), 'eating-out');
+    expect(suggestion).not.toBeNull();
+    expect(suggestion?.field).toBe('description');
+    expect(suggestion?.match).toBe('contains');
+    expect(suggestion?.pattern).toBe('BURGER PALACE OC PLAZA 12');
+  });
+
+  it('passes the account through when present', () => {
+    const c = classifiableFromParsed({
+      counterparty: 'ACME Corp',
+      description: 'salary',
+      counterpartyAccount: '9876543210/0300',
+      type: 'Příchozí úhrada',
+    });
+    expect(c.counterpartyAccount).toBe('9876543210/0300');
+    expect(c.bankType).toBe('Příchozí úhrada');
+  });
 });
 
 describe('classify', () => {

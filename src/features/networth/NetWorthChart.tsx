@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { MouseHandlerDataParam, TooltipContentProps } from 'recharts';
+import type { TooltipContentProps } from 'recharts';
 import type { NetWorthSeriesRow } from '../../engine/networth';
 import { formatKc } from '../../engine/money';
 import { formatShortDate } from '../../utils/dates';
@@ -18,7 +18,6 @@ import styles from './NetWorth.module.css';
 
 interface NetWorthChartProps {
   series: NetWorthSeriesRow[];
-  onSelectDate: (date: string) => void;
 }
 
 /** Compact crown value for the Y axis, e.g. 1 234 567 → "1,2M". */
@@ -88,7 +87,7 @@ function SnapshotTooltip({
   );
 }
 
-export function NetWorthChart({ series, onSelectDate }: NetWorthChartProps) {
+export function NetWorthChart({ series }: NetWorthChartProps) {
   // Liabilities render as their own band below the zero baseline.
   const data = series.map((row) => ({
     date: row.date,
@@ -104,15 +103,7 @@ export function NetWorthChart({ series, onSelectDate }: NetWorthChartProps) {
   return (
     <div className={styles.chart}>
       <ResponsiveContainer width="100%" height={240}>
-        <ComposedChart
-          data={data}
-          margin={{ top: 8, right: 8, bottom: 4, left: 4 }}
-          onClick={(state: MouseHandlerDataParam) => {
-            if (state?.activeLabel != null) {
-              onSelectDate(String(state.activeLabel));
-            }
-          }}
-        >
+        <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 4 }}>
           <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
           <XAxis
             dataKey="date"

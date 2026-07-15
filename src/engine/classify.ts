@@ -38,6 +38,28 @@ function isCardRow(tx: ClassifiableTransaction): boolean {
 }
 
 /**
+ * Adapt a freshly parsed statement row to {@link ClassifiableTransaction}. The
+ * parser names the bank Typ field `type`, but the classifier reads it as
+ * `bankType` (how `isCardRow` distinguishes a card payment's cardholder
+ * counterparty from a real vendor). Passing a parsed row straight through would
+ * leave `bankType` undefined, so every card row would be grouped and learned by
+ * the CARDHOLDER instead of the merchant — always route parsed rows through here.
+ */
+export function classifiableFromParsed(p: {
+  counterparty: string;
+  description: string;
+  counterpartyAccount?: string;
+  type: string;
+}): ClassifiableTransaction {
+  return {
+    counterparty: p.counterparty,
+    description: p.description,
+    counterpartyAccount: p.counterpartyAccount,
+    bankType: p.type,
+  };
+}
+
+/**
  * The merchant part of a card payment's description: the first segment up to
  * the first comma, trimmed — e.g. `"BURGER PALACE OC PLAZA 12, BRNO, 60200"` →
  * `"BURGER PALACE OC PLAZA 12"`. Returns `null` when nothing usable remains.

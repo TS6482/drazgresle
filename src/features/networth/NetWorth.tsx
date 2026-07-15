@@ -66,10 +66,7 @@ export function NetWorth() {
       )}
 
       {series.length > 0 && (
-        <NetWorthChart
-          series={series}
-          onSelectDate={(date) => setMode({ kind: 'edit', date })}
-        />
+        <NetWorthChart series={series} />
       )}
 
       {series.length === 1 && (
@@ -79,6 +76,7 @@ export function NetWorth() {
       {history.length > 0 && (
         <div className={styles.group}>
           <h2 className={styles.groupHeading}>History</h2>
+          <p className={styles.muted}>Tap a snapshot to edit it.</p>
           <ul className={styles.list}>
             {history.map((item) => (
               <li key={item.date}>
