@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import type { Category } from '../../types/data';
 import type { MonthSummary } from '../../engine/summarize';
@@ -53,7 +53,7 @@ interface Segment {
  * and an "Over by" note appears. A withdrawal month (saved < 0) simply shows no
  * Saved segment; "Left" still reflects true leftover.
  */
-export function MonthMeter({ summary, categories }: MonthMeterProps) {
+export const MonthMeter = memo(function MonthMeter({ summary, categories }: MonthMeterProps) {
   const byId = useMemo(
     () => new Map<string, Category>(categories.map((c) => [c.id, c])),
     [categories],
@@ -207,4 +207,4 @@ export function MonthMeter({ summary, categories }: MonthMeterProps) {
       )}
     </div>
   );
-}
+});

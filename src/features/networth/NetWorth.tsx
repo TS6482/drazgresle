@@ -1,10 +1,15 @@
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { computeNetWorth, computeSeries } from '../../engine/networth';
 import { formatKc } from '../../engine/money';
 import { useDataStore } from '../../store/data';
-import { NetWorthChart } from './NetWorthChart';
 import { SnapshotForm } from './SnapshotForm';
 import styles from './NetWorth.module.css';
+
+// Recharts is heavy; load the chart on demand so it stays out of the entry
+// chunk (see docs/ARCHITECTURE.md — bundle split).
+const NetWorthChart = lazy(() =>
+  import('./NetWorthChart').then((m) => ({ default: m.NetWorthChart })),
+);
 
 type Mode = { kind: 'list' } | { kind: 'new' } | { kind: 'edit'; date: string };
 
@@ -66,7 +71,9 @@ export function NetWorth() {
       )}
 
       {series.length > 0 && (
-        <NetWorthChart series={series} />
+        <Suspense fallback={<div className={styles.chartPlaceholder} />}>
+          <NetWorthChart series={series} />
+        </Suspense>
       )}
 
       {series.length === 1 && (

@@ -272,12 +272,14 @@ export interface RulesFile {
 // --- Budgets (budgets.json) --------------------------------------------------
 
 /**
- * A category's budget: a default monthly target with optional per-month
- * overrides keyed by `"YYYY-MM"`. An override wins over the default for that
- * month (see `budgetFor` in engine/summarize.ts).
+ * A category's budget: an optional default monthly target with optional
+ * per-month overrides keyed by `"YYYY-MM"`. An override wins over the default for
+ * that month (see `budgetFor` in engine/summarize.ts). A budget may set only
+ * overrides and no default — months without an override then have NO budget
+ * (null), not a 0 Kč ceiling.
  */
 export interface CategoryBudget {
-  defaultMonthlyHalere: number;
+  defaultMonthlyHalere?: number;
   overrides?: Record<string, number>;
 }
 

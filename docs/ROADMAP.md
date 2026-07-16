@@ -74,6 +74,14 @@ Statuses: `[ ]` todo · `[~]` in progress · `[x]` done.
 - [x] Budgets: default monthly target per category + per-month overrides; actual-vs-budget in
       monthly summary. *(Phase 2a: Opus 2026-07-15, Fable-reviewed, 70/70 tests, deployed.)*
 - [x] Cash quick-add: one-tap-from-home form for `source: cash` transactions (phone-first).
+- [x] Performance pass (Fable review 2026-07-16, Opus-implemented): charts (Recharts) lazy-load
+      behind height-matched Suspense placeholders + stable React vendor chunk — entry JS
+      663→121 kB min (gzip 198→37.5); `React.memo` on both Month-view charts + memoized
+      per-category transaction grouping (typing in rule/note inputs no longer re-renders
+      charts/lists); `loadMonth` in-flight dedupe (no duplicate GETs); **bug fix:** an
+      override-only budget no longer persists `defaultMonthlyHalere: 0` (which imposed a
+      0 Kč ceiling on every other month) — field now optional, +2 regression tests (173 total).
+      Real budgets.json checked: no stale 0-defaults, no migration needed.
 - [x] Month view (`#/month`): income/spent/net summary, budget bars with over-by warnings,
       transaction list with inline category edit; category management + salaries in Settings;
       new "this month's money" home; 4-tab navigation. *(Phase 2a.)*

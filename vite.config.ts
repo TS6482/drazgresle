@@ -6,6 +6,15 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   base: '/drazgresle/',
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        // Keep React in its own stable vendor chunk so app-code deploys don't
+        // force clients to re-download it.
+        manualChunks: { react: ['react', 'react-dom'] },
+      },
+    },
+  },
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],

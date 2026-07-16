@@ -66,6 +66,16 @@
   }
 }
 
+/* Suspense placeholder for the lazily-loaded chart. Matches the .chart card
+   (surface + border + radius) and its real height — 240px chart + a wrapping
+   legend + padding — so the layout does not jump when the chunk resolves. */
+.chartPlaceholder {
+  min-height: 320px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
 .legend {
   list-style: none;
   margin: var(--space-2) 0 0;

@@ -58,6 +58,13 @@ describe('budgetFor', () => {
   it('returns null for a category with no budget', () => {
     expect(budgetFor(budgets, 'save', '2026-07')).toBeNull();
   });
+
+  it('applies an override-only budget to its month, and null to every other', () => {
+    const overrideOnly: BudgetMap = { groceries: { overrides: { '2026-07': 500_000 } } };
+    expect(budgetFor(overrideOnly, 'groceries', '2026-07')).toBe(500_000);
+    // No default set → months without an override have NO budget, not 0.
+    expect(budgetFor(overrideOnly, 'groceries', '2026-08')).toBeNull();
+  });
 });
 
 describe('isExpenseGroup / isSavingsGroup', () => {
@@ -266,6 +273,33 @@ describe('summarizeMonth', () => {
     const g2 = later.byCategory.find((c) => c.categoryId === 'groceries');
     expect(g2?.budgetHalere).toBe(100_000); // default in a month with no override
     expect(g2?.overBudget).toBe(false);
+  });
+
+  it('an override-only budget binds only to its month; other months get no ceiling', () => {
+    // Regression: a budget with a per-month override but a blank default used to
+    // persist defaultMonthlyHalere: 0, so every other month showed a 0 Kč
+    // ceiling and flagged any spend as over-budget.
+    const budgets: BudgetMap = { groceries: { overrides: { '2026-07': 40_000 } } };
+
+    const overrideMonth = summarizeMonth(
+      [tx({ amountHalere: -60_000, categoryId: 'groceries' })],
+      categories,
+      budgets,
+      '2026-07',
+    );
+    const inMonth = overrideMonth.byCategory.find((c) => c.categoryId === 'groceries');
+    expect(inMonth?.budgetHalere).toBe(40_000); // the override applies
+    expect(inMonth?.overBudget).toBe(true); // 60k spend > 40k override
+
+    const otherMonth = summarizeMonth(
+      [tx({ amountHalere: -60_000, categoryId: 'groceries' })],
+      categories,
+      budgets,
+      '2026-08',
+    );
+    const elsewhere = otherMonth.byCategory.find((c) => c.categoryId === 'groceries');
+    expect(elsewhere?.budgetHalere).toBeNull(); // no budget — not 0
+    expect(elsewhere?.overBudget).toBe(false); // and therefore never over-budget
   });
 
   it('includes a budgeted category with no spend and sorts by spend desc', () => {

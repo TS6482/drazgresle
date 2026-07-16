@@ -433,6 +433,12 @@ const EMPTY_STATE = {
 };
 
 export const useDataStore = create<DataState>((set, get) => {
+  // In-flight month loads, keyed by `'YYYY-MM'`. `monthsLoaded` only flips true
+  // AFTER a fetch resolves, so without this, concurrent loadMonth calls for the
+  // same month (the Month view fires one per month on mount/switch; Import fires
+  // them too) would each fetch the same file. Cleared on reset().
+  const monthLoads = new Map<string, Promise<void>>();
+
   /** Shared write path: PUT with a structured merge, mapping failures to state. */
   async function write<T extends DataFile>(
     path: string,
@@ -524,21 +530,35 @@ export const useDataStore = create<DataState>((set, get) => {
       if (get().monthsLoaded[month]) {
         return;
       }
-      const client = activeClient();
-      if (!client) {
-        return;
+      const inFlight = monthLoads.get(month);
+      if (inFlight) {
+        return inFlight;
       }
-      try {
-        const file = await client.getJsonFile<MonthFile>(monthPath(month));
-        set((state) => ({
-          months: { ...state.months, [month]: sortTransactions(file?.data.transactions ?? []) },
-          monthStatements: { ...state.monthStatements, [month]: file?.data.statements ?? [] },
-          monthShas: { ...state.monthShas, [month]: file?.sha ?? null },
-          monthsLoaded: { ...state.monthsLoaded, [month]: true },
-        }));
-      } catch (err) {
-        set({ error: describeError(err) });
-      }
+      const load = (async () => {
+        const client = activeClient();
+        if (!client) {
+          return;
+        }
+        try {
+          const file = await client.getJsonFile<MonthFile>(monthPath(month));
+          set((state) => ({
+            months: { ...state.months, [month]: sortTransactions(file?.data.transactions ?? []) },
+            monthStatements: { ...state.monthStatements, [month]: file?.data.statements ?? [] },
+            monthShas: { ...state.monthShas, [month]: file?.sha ?? null },
+            monthsLoaded: { ...state.monthsLoaded, [month]: true },
+          }));
+        } catch (err) {
+          // Month stays unmarked so a later call can retry.
+          set({ error: describeError(err) });
+        }
+      })();
+      monthLoads.set(month, load);
+      // Drop the entry once settled (loaded or errored), never leaving a stale
+      // resolved promise that would suppress a retry after a failure.
+      void load.finally(() => {
+        monthLoads.delete(month);
+      });
+      return load;
     },
 
     saveAccounts: async (next) => {
@@ -835,6 +855,7 @@ export const useDataStore = create<DataState>((set, get) => {
     },
 
     reset: () => {
+      monthLoads.clear();
       set({
         ...EMPTY_STATE,
         currentMonthKey: monthKey(todayIso()),

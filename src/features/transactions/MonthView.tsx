@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type { Category, Rule, RuleField, Transaction } from '../../types/data';
 import {
   isExpenseGroup,
@@ -18,8 +18,6 @@ import { cashFlowForYear } from '../../engine/cashflow';
 import { SPENDING_AREAS, areaColor, areaIcon, areaOf } from '../../engine/areas';
 import { resolveCategoryIcon } from '../../engine/categoryIcons';
 import { CategoryIcon } from '../shared/icons/CategoryIcon';
-import { MonthMeter } from './MonthMeter';
-import { CashFlowChart } from './CashFlowChart';
 import { GoalReadout } from '../shared/GoalReadout';
 import { Toggle } from '../shared/Toggle';
 import { useDataStore } from '../../store/data';
@@ -28,6 +26,14 @@ import { formatDayMonth, formatMonthLabel, shiftMonth } from '../../utils/dates'
 import { newId } from '../../utils/id';
 import { CategoryPicker } from '../shared/CategoryPicker';
 import styles from './MonthView.module.css';
+
+// Recharts is heavy; loading the two chart components on demand keeps it out of
+// the entry chunk (see docs/ARCHITECTURE.md — bundle split). Both keep named
+// exports (memoized), so we re-map to the default lazy() expects.
+const CashFlowChart = lazy(() =>
+  import('./CashFlowChart').then((m) => ({ default: m.CashFlowChart })),
+);
+const MonthMeter = lazy(() => import('./MonthMeter').then((m) => ({ default: m.MonthMeter })));
 
 /** A staged category change awaiting confirmation, with its rule offer. */
 interface PendingChange {
@@ -140,7 +146,25 @@ export function MonthView() {
     [transactions],
   );
 
-  const unclassified = ordered.filter((t) => t.categoryId === null);
+  // Group transactions by category once per list change, so the budget-vs-actual
+  // drill-downs don't each re-scan every transaction on every keystroke. Pushing
+  // while iterating `ordered` (newest-first) keeps each group newest-first too.
+  const txsByCategory = useMemo(() => {
+    const m = new Map<string, Transaction[]>();
+    for (const t of ordered) {
+      if (t.categoryId !== null) {
+        const list = m.get(t.categoryId);
+        if (list) {
+          list.push(t);
+        } else {
+          m.set(t.categoryId, [t]);
+        }
+      }
+    }
+    return m;
+  }, [ordered]);
+
+  const unclassified = useMemo(() => ordered.filter((t) => t.categoryId === null), [ordered]);
 
   // Transfers between own accounts (reserved `'transfer'` category or any
   // category whose group is `'transfer'`). Never counted in any total — the
@@ -150,32 +174,45 @@ export function MonthView() {
     () => ordered.filter((t) => t.categoryId !== null && isTransferCategory(t.categoryId, byId)),
     [ordered, byId],
   );
-  const transferNet = transferTxs.reduce((sum, t) => sum + t.amountHalere, 0);
+  const transferNet = useMemo(
+    () => transferTxs.reduce((sum, t) => sum + t.amountHalere, 0),
+    [transferTxs],
+  );
   // Default ON: an unset preference shows the section.
   const showTransfers = prefs.showTransfers ?? true;
 
   // Budget-vs-actual splits into spending (ceiling budgets) and saving (target
   // floors). Income rows never appear — they are already the Income total. The
   // engine still returns every row in byCategory (filtering is display-only).
-  const spendingRows = summary.byCategory.filter((row) => isExpenseGroup(row.group));
-  const savingRows = summary.byCategory.filter((row) => isSavingsGroup(row.group));
+  const spendingRows = useMemo(
+    () => summary.byCategory.filter((row) => isExpenseGroup(row.group)),
+    [summary.byCategory],
+  );
+  const savingRows = useMemo(
+    () => summary.byCategory.filter((row) => isSavingsGroup(row.group)),
+    [summary.byCategory],
+  );
 
   // Group the spending rows under their spending areas (SPENDING_AREAS order),
   // keeping only areas that have at least one expense category with spend or a
   // budget. Each area header carries the subtotal spend and, when any category
   // in it is budgeted, the summed area budget with the same over/under treatment
   // as a category row.
-  const areaGroups = SPENDING_AREAS.map((area) => {
-    const rows = spendingRows.filter((row) => {
-      const category = byId.get(row.categoryId);
-      return (category ? areaOf(category) : 'others') === area.id;
-    });
-    const spend = rows.reduce((sum, row) => sum + row.spendHalere, 0);
-    const budgetedRows = rows.filter((row) => row.budgetHalere !== null);
-    const hasBudget = budgetedRows.length > 0;
-    const budget = budgetedRows.reduce((sum, row) => sum + (row.budgetHalere ?? 0), 0);
-    return { area, rows, spend, hasBudget, budget, over: hasBudget && spend > budget };
-  }).filter((group) => group.rows.length > 0);
+  const areaGroups = useMemo(
+    () =>
+      SPENDING_AREAS.map((area) => {
+        const rows = spendingRows.filter((row) => {
+          const category = byId.get(row.categoryId);
+          return (category ? areaOf(category) : 'others') === area.id;
+        });
+        const spend = rows.reduce((sum, row) => sum + row.spendHalere, 0);
+        const budgetedRows = rows.filter((row) => row.budgetHalere !== null);
+        const hasBudget = budgetedRows.length > 0;
+        const budget = budgetedRows.reduce((sum, row) => sum + (row.budgetHalere ?? 0), 0);
+        return { area, rows, spend, hasBudget, budget, over: hasBudget && spend > budget };
+      }).filter((group) => group.rows.length > 0),
+    [spendingRows, byId],
+  );
 
   function categoryName(categoryId: string | null): string {
     if (categoryId === null) {
@@ -506,7 +543,7 @@ export function MonthView() {
     const open = openCategories[row.categoryId] ?? false;
     const icon = iconFor(row.categoryId);
     // Same objects as the full list — an edit here reflects there.
-    const categoryTxs = ordered.filter((t) => t.categoryId === row.categoryId);
+    const categoryTxs = txsByCategory.get(row.categoryId) ?? [];
     return (
       <li key={row.categoryId} className={styles.budgetRow}>
         <button
@@ -580,9 +617,13 @@ export function MonthView() {
         </button>
       </div>
 
-      <CashFlowChart series={cashFlow} />
+      <Suspense fallback={<div className={styles.cashFlowPlaceholder} />}>
+        <CashFlowChart series={cashFlow} />
+      </Suspense>
 
-      <MonthMeter summary={summary} categories={categories} />
+      <Suspense fallback={<div className={styles.meterPlaceholder} />}>
+        <MonthMeter summary={summary} categories={categories} />
+      </Suspense>
 
       {goalTarget !== undefined && summary.incomeHalere > 0 && (
         <GoalReadout leftoverHalere={summary.leftoverHalere} targetHalere={goalTarget} />

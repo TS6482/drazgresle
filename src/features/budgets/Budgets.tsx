@@ -106,7 +106,12 @@ export function Budgets() {
         }
         continue;
       }
-      const entry: CategoryBudget = { defaultMonthlyHalere: defaultParsed ?? 0 };
+      // Only persist a default when one was actually entered — coercing a blank
+      // default to 0 would impose a 0 Kč ceiling on every non-override month.
+      const entry: CategoryBudget = {};
+      if (defaultParsed !== null) {
+        entry.defaultMonthlyHalere = defaultParsed;
+      }
       if (hasOverrides) {
         entry.overrides = merged;
       }

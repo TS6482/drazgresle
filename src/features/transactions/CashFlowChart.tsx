@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import {
   CartesianGrid,
   Line,
@@ -63,7 +64,7 @@ function CashFlowTooltip({ active, label, series }: TooltipContentProps & { seri
  * data. A single month shows as two dots; more months connect into lines. Hover
  * or tap a month to read the exact amounts.
  */
-export function CashFlowChart({ series }: CashFlowChartProps) {
+export const CashFlowChart = memo(function CashFlowChart({ series }: CashFlowChartProps) {
   if (series.length === 0) {
     return null;
   }
@@ -128,4 +129,4 @@ export function CashFlowChart({ series }: CashFlowChartProps) {
       </ul>
     </div>
   );
-}
+});
