@@ -170,11 +170,11 @@
   font-weight: 700;
 }
 
-/* The subcategory rows revealed inside the area card — an inset panel so they
-   read as contained within the box. */
+/* The subcategory rows revealed inside the area card — same surface as the
+   header (one uniform card); hierarchy comes from the divider + hairlines, not
+   a different background. */
 .areaCategories {
-  padding: var(--space-1) var(--space-3) var(--space-2);
-  background: var(--color-surface-alt);
+  padding: 0 var(--space-3) var(--space-1);
   gap: 0;
 }
 
