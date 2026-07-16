@@ -1,10 +1,13 @@
+/* iOS-style Month view: inset grouped lists (white cards on the grouped-gray
+   background), hairline row separators, systemGray section headers, tinted
+   controls. Cards carry no border — separation comes from the background. */
 .screen {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-5);
 }
 
-/* Month picker: prev / label / next. */
+/* Month picker: borderless tinted arrows around a bold centred title. */
 .monthNav {
   display: flex;
   align-items: center;
@@ -15,52 +18,25 @@
 .navBtn {
   min-width: 44px;
   min-height: 44px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: var(--text-lg);
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 1.5rem;
+  line-height: 1;
   cursor: pointer;
 }
 
 .monthLabel {
   font-size: var(--text-lg);
   font-weight: 700;
-}
-
-/* Income / Spent / Saved / Left over header — a 2×2 grid stays readable on a
-   390px phone; four across would squeeze the amounts. */
-.summary {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-2);
-}
-
-.summaryItem {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-3);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  text-align: center;
-}
-
-.summaryLabel {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
-.summaryValue {
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
 .income {
   color: var(--color-primary);
 }
 
+/* Action buttons — iOS filled vs tinted. */
 .actionsRow {
   display: flex;
   gap: var(--space-3);
@@ -68,21 +44,25 @@
 
 .primaryBtn {
   flex: 1;
-  min-height: 44px;
+  min-height: 48px;
   border-radius: var(--radius);
   background: var(--color-primary);
   color: var(--color-on-primary);
-  border: 1px solid var(--color-primary);
+  border: none;
+  font-size: var(--text-base);
+  font-weight: 600;
   cursor: pointer;
 }
 
 .secondaryBtn {
   flex: 1;
-  min-height: 44px;
+  min-height: 48px;
   border-radius: var(--radius);
-  background: var(--color-surface);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  border: none;
+  font-size: var(--text-base);
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -97,64 +77,69 @@
   gap: var(--space-2);
 }
 
+/* iOS grouped section header: small systemGray caps, inset to align with rows. */
 .blockHeading {
   margin: 0;
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+}
+
+.subHeading {
+  margin: var(--space-2) 0 0;
+  padding: 0 var(--space-4);
   font-size: var(--text-sm);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   color: var(--color-text-muted);
 }
 
-/* Subsection heading inside a block (Spending / Saving). */
-.subHeading {
-  margin: var(--space-1) 0 0;
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-text-muted);
-}
-
-/* --- budget vs actual --- */
+/* --- inset grouped lists --- */
+/* A list container is one grouped card; its rows are borderless and separated
+   by hairlines. */
 .budgetList,
-.txList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-/* --- spending grouped by area --- */
+.txList,
 .areaList {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-}
-
-/* Each area is ONE card; its subcategories live inside the same box. */
-.areaGroup {
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
   border-radius: var(--radius);
   overflow: hidden;
 }
 
-/* Area accordion header: fills the top of the card, no card chrome of its own. */
+/* The area list holds one card per area, so it stays a plain stack with gaps. */
+.areaList {
+  background: transparent;
+  border-radius: 0;
+  overflow: visible;
+  gap: var(--space-4);
+}
+
+/* Each area is ONE grouped card; its subcategories live inside the same box. */
+.areaGroup {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* Area header: fills the top of the card. */
 .areaHeader {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
   width: 100%;
-  min-height: 44px;
+  min-height: 48px;
   margin: 0;
-  padding: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   background: transparent;
   border: none;
-  /* Reserved divider so opening doesn't shift layout; shown when expanded. */
-  border-bottom: 1px solid transparent;
+  border-bottom: var(--hairline) solid transparent;
   color: inherit;
   font: inherit;
   text-align: left;
@@ -165,49 +150,37 @@
   border-bottom-color: var(--color-border);
 }
 
-/* Slightly heavier than a category name to set the area above its categories. */
+/* iOS headline weight to set the area above its categories. */
 .areaName {
-  font-weight: 700;
+  font-weight: 600;
 }
 
-/* The subcategory rows revealed inside the area card — same surface as the
-   header (one uniform card); hierarchy comes from the divider + hairlines, not
-   a different background. */
+/* Subcategory rows inside the area card — same surface; hierarchy from hairlines. */
 .areaCategories {
-  padding: 0 var(--space-3) var(--space-1);
+  padding: 0 var(--space-4);
   gap: 0;
-}
-
-/* Subcategory rows inside an area: not their own cards — flat rows separated by
-   hairlines, so the whole area is one tidy box. (The Saving section's rows keep
-   the standalone card style.) */
-.areaCategories .budgetRow {
-  padding: var(--space-2) 0;
   background: transparent;
-  border: none;
   border-radius: 0;
-}
-
-.areaCategories .budgetRow + .budgetRow {
-  border-top: 1px solid var(--color-border);
 }
 
 .budgetRow {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
 }
 
-/* The tappable accordion header of a budget row: a plain button that keeps the
-   card's internal layout and is comfortably thumb-sized. */
+/* Hairline between adjacent rows within any grouped list/area. */
+.budgetRow + .budgetRow {
+  border-top: var(--hairline) solid var(--color-border);
+}
+
+/* The tappable accordion header of a budget row. */
 .budgetHeader {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
   width: 100%;
   min-height: 44px;
   margin: 0;
@@ -220,23 +193,26 @@
   cursor: pointer;
 }
 
-/* Chevron affordance; rotates when the category is expanded. */
+/* iOS disclosure chevron: light systemGray, thin. */
 .chevron {
   display: inline-block;
   margin-left: var(--space-2);
   color: var(--color-text-muted);
   font-size: var(--text-lg);
   line-height: 1;
-  transition: transform 120ms ease;
+  opacity: 0.6;
+  transition: transform 150ms ease;
 }
 
 .chevronOpen {
   transform: rotate(90deg);
 }
 
-/* The drilled-down transaction list inside an expanded budget row. */
 .drillList {
-  margin-top: var(--space-1);
+  margin-top: var(--space-2);
+  background: transparent;
+  border-radius: 0;
+  overflow: visible;
 }
 
 .budgetTop {
@@ -247,21 +223,23 @@
 }
 
 .budgetName {
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .budgetFigures {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  color: var(--color-text-muted);
 }
 
 .budgetOf {
   color: var(--color-text-muted);
 }
 
+/* iOS-thin progress track. */
 .track {
-  display: block; /* also used as a <span> inside the accordion button */
-  height: 8px;
+  display: block;
+  height: 6px;
   border-radius: 999px;
   background: var(--color-surface-alt);
   overflow: hidden;
@@ -284,17 +262,20 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Savings target reached — always positive, never danger. */
 .metText {
   font-size: var(--text-sm);
   color: var(--color-primary);
   font-weight: 600;
 }
 
-/* --- transaction rows --- */
+/* --- transaction rows (borderless rows inside a grouped card) --- */
 .txItem {
   display: flex;
   flex-direction: column;
+}
+
+.txItem + .txItem {
+  border-top: var(--hairline) solid var(--color-border);
 }
 
 .txRow {
@@ -304,17 +285,16 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-3);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: none;
   cursor: pointer;
   text-align: left;
   color: var(--color-text);
 }
 
 .txRow[aria-expanded='true'] {
-  border-color: var(--color-primary);
+  background: var(--color-surface-alt);
 }
 
 .txMain {
@@ -325,7 +305,7 @@
 }
 
 .txWho {
-  font-weight: 600;
+  font-weight: 400;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -343,7 +323,6 @@
   white-space: nowrap;
 }
 
-/* Full-description context on the secondary line: one line, ellipsized. */
 .txDesc {
   flex: 1;
   min-width: 0;
@@ -354,7 +333,6 @@
   white-space: nowrap;
 }
 
-/* The user's own note — italic so it can never be confused with bank data. */
 .txNote {
   font-size: var(--text-sm);
   font-style: italic;
@@ -381,19 +359,18 @@
 .txAmount {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  font-weight: 600;
+  font-weight: 400;
 }
 
+/* Inline editor: an inset panel under the expanded row, matching its selected
+   fill; separated by a hairline rather than a heavy box. */
 .editor {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  margin-top: calc(-1 * var(--space-1));
-  border: 1px solid var(--color-primary);
-  border-top: none;
-  border-radius: 0 0 var(--radius) var(--radius);
-  background: var(--color-surface);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-top: var(--hairline) solid var(--color-border);
+  background: var(--color-surface-alt);
 }
 
 .editorLabel {
@@ -403,10 +380,11 @@
 
 .deleteBtn {
   min-height: 44px;
-  border-radius: var(--radius);
-  background: transparent;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
   color: var(--color-danger);
-  border: 1px solid var(--color-danger);
+  border: none;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -444,9 +422,9 @@
   padding: var(--space-2) var(--space-3);
   font-size: var(--text-base);
   color: var(--color-text);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  background: var(--color-surface);
+  border: var(--hairline) solid var(--color-border);
+  border-radius: var(--radius-sm);
 }
 
 .patternInput[aria-invalid='true'] {
@@ -468,23 +446,24 @@
   gap: var(--space-2);
 }
 
-/* Unobtrusive add/edit-note affordance in the row editor. */
 .noteBtn {
   min-height: 44px;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  border: none;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .confirmBtn {
   flex: 1;
   min-height: 44px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   background: var(--color-primary);
   color: var(--color-on-primary);
-  border: 1px solid var(--color-primary);
+  border: none;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -496,9 +475,10 @@
 .cancelBtn {
   min-height: 44px;
   padding: 0 var(--space-4);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
+  color: var(--color-primary);
+  border: none;
+  font-weight: 600;
   cursor: pointer;
 }

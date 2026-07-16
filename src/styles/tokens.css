@@ -4,20 +4,21 @@
 :root {
   color-scheme: light dark;
 
-  /* Colours — light */
-  --color-bg: #f4f6f8;
-  --color-surface: #ffffff;
-  --color-surface-alt: #eef1f4;
-  --color-text: #1b1f24;
-  --color-text-muted: #5c6673;
-  --color-border: #d9dee4;
-  --color-primary: #4338ca;
-  --color-primary-strong: #3730a3;
+  /* Colours — light. iOS system palette: grouped gray background, white cards,
+     system indigo accent, system red, system grays for text/separators. */
+  --color-bg: #f2f2f7; /* systemGroupedBackground */
+  --color-surface: #ffffff; /* secondarySystemGroupedBackground (cards) */
+  --color-surface-alt: #e9e9ee; /* subtle fills (progress tracks, insets) */
+  --color-text: #1c1c1e; /* label */
+  --color-text-muted: #8e8e93; /* secondaryLabel / systemGray */
+  --color-border: #c6c6c8; /* opaque separator */
+  --color-primary: #5856d6; /* systemIndigo */
+  --color-primary-strong: #4b49c9; /* pressed */
   --color-on-primary: #ffffff;
-  --color-danger: #b3261e;
-  --color-warning-bg: #fff3df;
-  --color-warning-border: #f0c67a;
-  --color-warning-text: #6b4a05;
+  --color-danger: #ff3b30; /* systemRed */
+  --color-warning-bg: #fff8e1;
+  --color-warning-border: #ffcc00; /* systemYellow */
+  --color-warning-text: #7a5c00;
 
   /* Spacing scale */
   --space-1: 4px;
@@ -27,35 +28,41 @@
   --space-5: 24px;
   --space-6: 32px;
 
-  --radius: 10px;
+  /* iOS uses generous corner radii on cards/controls. */
+  --radius: 12px;
+  --radius-sm: 8px;
+  /* Hairline separator width (iOS ~0.5px). */
+  --hairline: 0.5px;
 
-  /* Type */
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --text-sm: 0.85rem;
-  --text-base: 1rem;
-  --text-lg: 1.25rem;
-  --text-xl: 1.6rem;
+  /* Type — SF Pro via the Apple system stack; iOS text-style sizes. */
+  --font-sans: -apple-system, system-ui, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+  --text-sm: 0.8125rem; /* 13px — footnote */
+  --text-base: 1.0625rem; /* 17px — body */
+  --text-lg: 1.375rem; /* 22px — title */
+  --text-xl: 2.125rem; /* 34px — large title */
 
   /* Layout */
-  --header-height: 56px;
+  --header-height: 52px;
   --content-max: 560px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-bg: #14171a;
-    --color-surface: #1e2226;
-    --color-surface-alt: #262b31;
-    --color-text: #e7ebef;
-    --color-text-muted: #9aa4af;
-    --color-border: #333a41;
-    --color-primary: #8f8af1;
-    --color-primary-strong: #7d78ee;
-    --color-on-primary: #12102e;
-    --color-danger: #f2887f;
-    --color-warning-bg: #3a2f17;
-    --color-warning-border: #6b551f;
-    --color-warning-text: #f0d69a;
+    /* iOS dark: true-black grouped background (OLED), elevated dark-gray cards. */
+    --color-bg: #000000;
+    --color-surface: #1c1c1e;
+    --color-surface-alt: #2c2c2e;
+    --color-text: #ffffff;
+    --color-text-muted: #98989e;
+    --color-border: #38383a;
+    --color-primary: #5e5ce6; /* systemIndigo (dark) */
+    --color-primary-strong: #6f6de9;
+    --color-on-primary: #ffffff;
+    --color-danger: #ff453a; /* systemRed (dark) */
+    --color-warning-bg: #3a2f0b;
+    --color-warning-border: #6b5300;
+    --color-warning-text: #ffd60a;
   }
 }
 
@@ -74,10 +81,12 @@ body {
 body {
   font-family: var(--font-sans);
   font-size: var(--text-base);
-  line-height: 1.5;
+  line-height: 1.47;
   color: var(--color-text);
   background: var(--color-bg);
   -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 button {
