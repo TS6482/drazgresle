@@ -52,8 +52,8 @@
 }
 
 .leftValue {
-  font-size: var(--text-xl);
-  font-weight: 700;
+  font-size: var(--text-lg);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--color-text);
 }
