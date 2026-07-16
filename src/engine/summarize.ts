@@ -73,8 +73,9 @@ export function budgetFor(
   return entry.defaultMonthlyHalere ?? null;
 }
 
-/** True when a transaction's category is a transfer (by id or by group). */
-function isTransferCategory(categoryId: string, byId: Map<string, Category>): boolean {
+/** True when a transaction's category is a transfer (by id or by group). The
+ *  Month view reuses this to list transfer rows (still excluded from totals). */
+export function isTransferCategory(categoryId: string, byId: Map<string, Category>): boolean {
   if (categoryId === TRANSFER_CATEGORY_ID) {
     return true;
   }

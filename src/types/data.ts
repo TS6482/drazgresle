@@ -312,6 +312,16 @@ export interface HouseholdGoals {
   monthlyLeftoverHalere?: number;
 }
 
+/**
+ * Household-level UI preferences stored in settings.json. Small extensible
+ * object (like `HouseholdGoals`) so more toggles can be added without a schema
+ * bump. Every field is optional; an absent value falls back to its default.
+ */
+export interface HouseholdPrefs {
+  /** Show the Transfers section in the Month view. Absent defaults to true. */
+  showTransfers?: boolean;
+}
+
 /** `settings.json`. Seeded empty as `{persons: [], projectionDefaults: {}}`. */
 export interface SettingsFile {
   schemaVersion: 1;
@@ -319,4 +329,6 @@ export interface SettingsFile {
   projectionDefaults: Record<string, number>;
   /** Optional household goals (see §0). Absent when none is set. */
   goals?: HouseholdGoals;
+  /** Optional household UI preferences. Absent when all defaults apply. */
+  prefs?: HouseholdPrefs;
 }

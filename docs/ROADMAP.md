@@ -109,6 +109,13 @@ import.
 
 ## Decision log
 
+- 2026-07-16 — Transfers revisited so "true saving" is visible (user chose "Both"): (a)
+  transfers to the household **savings account** are now a **"Bank transfer" category (group
+  savings)** — they count in Saved / the gauge Saved band, like Investments; rule repointed and
+  25 existing rows across Jan–Jun reclassified. Lunch-account transfers stay plain Transfer.
+  (b) A **toggleable "Transfers" section** below Saving in the Month view lists the remaining
+  (excluded) transfer transactions; on/off state persisted in a new settings `prefs`.
+
 - 2026-07-16 — Apple/iOS design language adopted (kept indigo, tuned to system indigo). Tokens
   → iOS system palette, SF type scale, true-black dark, 12px radii, frosted nav/tab bars; Month
   view restyled as inset grouped lists. Rolling out to other screens next.

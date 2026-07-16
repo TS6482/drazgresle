@@ -1,0 +1,57 @@
+/* iOS UISwitch: a 51×31 pill track with a white sliding knob. ON fills green,
+   OFF is a neutral systemGray track. A transparent ::after extends the tap
+   target to ≥44px in both axes without changing the visual size. */
+.track {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  width: 51px;
+  height: 31px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--color-surface-alt);
+  cursor: pointer;
+  transition: background-color 200ms ease;
+}
+
+/* Extend the hit area to 51×45 (≥44px) without enlarging the pill. */
+.track::after {
+  content: '';
+  position: absolute;
+  inset: -7px 0;
+}
+
+.track:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.on {
+  background: var(--color-success);
+}
+
+.knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 200ms ease;
+}
+
+/* 51 − 27 − 2 (left) − 2 (right) = 20px of travel. */
+.on .knob {
+  transform: translateX(20px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track,
+  .knob {
+    transition: none;
+  }
+}

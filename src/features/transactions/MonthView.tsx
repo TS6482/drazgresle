@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Category, Rule, RuleField, Transaction } from '../../types/data';
-import { isExpenseGroup, isSavingsGroup, summarizeMonth } from '../../engine/summarize';
+import {
+  isExpenseGroup,
+  isSavingsGroup,
+  isTransferCategory,
+  summarizeMonth,
+} from '../../engine/summarize';
 import {
   classify,
   displayVendor,
@@ -16,6 +21,7 @@ import { CategoryIcon } from '../shared/icons/CategoryIcon';
 import { MonthMeter } from './MonthMeter';
 import { CashFlowChart } from './CashFlowChart';
 import { GoalReadout } from '../shared/GoalReadout';
+import { Toggle } from '../shared/Toggle';
 import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
 import { formatDayMonth, formatMonthLabel, shiftMonth } from '../../utils/dates';
@@ -48,6 +54,8 @@ export function MonthView() {
   const monthsLoaded = useDataStore((s) => s.monthsLoaded);
   const defaultMonthKey = useDataStore((s) => s.defaultMonthKey);
   const goalTarget = useDataStore((s) => s.goals.monthlyLeftoverHalere);
+  const prefs = useDataStore((s) => s.prefs);
+  const savePrefs = useDataStore((s) => s.savePrefs);
   const loadMonth = useDataStore((s) => s.loadMonth);
   const saveTransaction = useDataStore((s) => s.saveTransaction);
   const saveTransactions = useDataStore((s) => s.saveTransactions);
@@ -133,6 +141,18 @@ export function MonthView() {
   );
 
   const unclassified = ordered.filter((t) => t.categoryId === null);
+
+  // Transfers between own accounts (reserved `'transfer'` category or any
+  // category whose group is `'transfer'`). Never counted in any total — the
+  // engine already excludes them; this list just surfaces them. Reuses the
+  // engine's transfer test so the two stay in lock-step.
+  const transferTxs = useMemo(
+    () => ordered.filter((t) => t.categoryId !== null && isTransferCategory(t.categoryId, byId)),
+    [ordered, byId],
+  );
+  const transferNet = transferTxs.reduce((sum, t) => sum + t.amountHalere, 0);
+  // Default ON: an unset preference shows the section.
+  const showTransfers = prefs.showTransfers ?? true;
 
   // Budget-vs-actual splits into spending (ceiling budgets) and saving (target
   // floors). Income rows never appear — they are already the Income total. The
@@ -689,6 +709,26 @@ export function MonthView() {
               <ul className={styles.budgetList}>
                 {savingRows.map((row) => renderBudgetRow(row, true))}
               </ul>
+            </>
+          )}
+        </div>
+      )}
+
+      {transferTxs.length > 0 && (
+        <div className={styles.block}>
+          <div className={styles.transfersHeader}>
+            <h2 className={`${styles.blockHeading} ${styles.headingFlush}`}>Transfers</h2>
+            <Toggle
+              checked={showTransfers}
+              onChange={(next) => void savePrefs({ ...prefs, showTransfers: next })}
+              label="Show transfers"
+              disabled={saving}
+            />
+          </div>
+          {showTransfers && (
+            <>
+              <ul className={styles.txList}>{transferTxs.map(renderRow)}</ul>
+              <p className={styles.transfersFoot}>Net {formatKc(transferNet)}</p>
             </>
           )}
         </div>

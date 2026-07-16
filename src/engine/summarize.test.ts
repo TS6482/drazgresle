@@ -3,6 +3,7 @@ import {
   budgetFor,
   isExpenseGroup,
   isSavingsGroup,
+  isTransferCategory,
   monthKey,
   summarizeMonth,
 } from './summarize';
@@ -76,6 +77,28 @@ describe('isExpenseGroup / isSavingsGroup', () => {
     expect(isSavingsGroup('expense')).toBe(false);
     expect(isSavingsGroup('income')).toBe(false);
     expect(isSavingsGroup(undefined)).toBe(false);
+  });
+});
+
+describe('isTransferCategory', () => {
+  const byId = new Map<string, Category>(categories.map((c) => [c.id, c]));
+
+  it('matches the reserved transfer id even with no category record', () => {
+    expect(isTransferCategory('transfer', new Map())).toBe(true);
+  });
+
+  it('matches any category whose group is transfer, regardless of id', () => {
+    const named = new Map<string, Category>([
+      ['move-money', { id: 'move-money', name: 'Internal move', group: 'transfer' }],
+    ]);
+    expect(isTransferCategory('move-money', named)).toBe(true);
+  });
+
+  it('is false for income, expense, savings, and unknown categories', () => {
+    expect(isTransferCategory('salary', byId)).toBe(false);
+    expect(isTransferCategory('groceries', byId)).toBe(false);
+    expect(isTransferCategory('save', byId)).toBe(false);
+    expect(isTransferCategory('ghost', byId)).toBe(false);
   });
 });
 

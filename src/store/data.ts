@@ -17,6 +17,7 @@ import type {
   Category,
   CategoryBudget,
   HouseholdGoals,
+  HouseholdPrefs,
   IsoDate,
   MonthFile,
   Person,
@@ -181,22 +182,25 @@ function mergeBudgets(next: Record<string, CategoryBudget | null>) {
 }
 
 /** The subset of settings a single write intends to change; unset fields are
- *  preserved from the current file (so people-edits keep goals, and vice versa). */
+ *  preserved from the current file (so people-edits keep goals/prefs, etc.). */
 interface SettingsPatch {
   persons?: Person[];
   projectionDefaults?: Record<string, number>;
   goals?: HouseholdGoals;
+  prefs?: HouseholdPrefs;
 }
 
 /**
  * Overlay a settings patch onto the current file, preserving fields the write
  * did not touch. Re-applied on top of the freshly-fetched file on a 409, so a
- * concurrent edit to the OTHER section (people vs goals) survives. A goal with
- * no `monthlyLeftoverHalere` clears the `goals` key entirely.
+ * concurrent edit to ANOTHER section (people / goals / prefs) survives. A goal
+ * with no `monthlyLeftoverHalere` clears the `goals` key; an empty prefs object
+ * clears the `prefs` key.
  */
 function mergeSettings(patch: SettingsPatch) {
   return (current: SettingsFile | null): SettingsFile => {
     const goals = patch.goals !== undefined ? patch.goals : current?.goals;
+    const prefs = patch.prefs !== undefined ? patch.prefs : current?.prefs;
     const file: SettingsFile = {
       schemaVersion: 1,
       persons: patch.persons ?? current?.persons ?? [],
@@ -205,20 +209,27 @@ function mergeSettings(patch: SettingsPatch) {
     if (goals && goals.monthlyLeftoverHalere !== undefined) {
       file.goals = goals;
     }
+    if (prefs && Object.keys(prefs).length > 0) {
+      file.prefs = prefs;
+    }
     return file;
   };
 }
 
 /** The current settings file as held in state, used as the local base a write
- *  overlays its patch onto. Omits `goals` when no goal is set. */
+ *  overlays its patch onto. Omits `goals`/`prefs` when unset/empty. */
 function settingsFileFromState(
   persons: Person[],
   projectionDefaults: Record<string, number>,
   goals: HouseholdGoals,
+  prefs: HouseholdPrefs,
 ): SettingsFile {
   const file: SettingsFile = { schemaVersion: 1, persons, projectionDefaults };
   if (goals.monthlyLeftoverHalere !== undefined) {
     file.goals = goals;
+  }
+  if (Object.keys(prefs).length > 0) {
+    file.prefs = prefs;
   }
   return file;
 }
@@ -324,6 +335,8 @@ interface DataState {
   projectionDefaults: Record<string, number>;
   /** Household goals from settings.json (default `{}` when none set). */
   goals: HouseholdGoals;
+  /** Household UI preferences from settings.json (default `{}` when none set). */
+  prefs: HouseholdPrefs;
   /** Cache of loaded month files' transactions, keyed by `'YYYY-MM'`. */
   months: Record<string, Transaction[]>;
   /** Cache of loaded month files' statement metadata, keyed by `'YYYY-MM'`. */
@@ -367,6 +380,9 @@ interface DataState {
   /** Persist household goals; persons + projection defaults preserved. An empty
    *  object (no `monthlyLeftoverHalere`) clears the goal. */
   saveGoals: (goals: HouseholdGoals) => Promise<boolean>;
+  /** Persist household UI preferences; persons, projection defaults, and goals
+   *  preserved. An empty object clears the `prefs` key. */
+  savePrefs: (prefs: HouseholdPrefs) => Promise<boolean>;
   /** Upsert one transaction into its month file (derived from its date). */
   saveTransaction: (transaction: Transaction) => Promise<boolean>;
   /** Remove a transaction by id from the given month. */
@@ -397,6 +413,7 @@ const EMPTY_STATE = {
   persons: [] as Person[],
   projectionDefaults: {} as Record<string, number>,
   goals: {} as HouseholdGoals,
+  prefs: {} as HouseholdPrefs,
   months: {} as Record<string, Transaction[]>,
   monthStatements: {} as Record<string, StatementMeta[]>,
   currentMonthKey: monthKey(todayIso()),
@@ -485,6 +502,7 @@ export const useDataStore = create<DataState>((set, get) => {
           persons: settingsFile?.data.persons ?? [],
           projectionDefaults: settingsFile?.data.projectionDefaults ?? {},
           goals: settingsFile?.data.goals ?? {},
+          prefs: settingsFile?.data.prefs ?? {},
           settingsSha: settingsFile?.sha ?? null,
           rules: rulesFile?.data.rules ?? [],
           rulesSha: rulesFile?.sha ?? null,
@@ -608,6 +626,7 @@ export const useDataStore = create<DataState>((set, get) => {
         get().persons,
         get().projectionDefaults,
         get().goals,
+        get().prefs,
       );
       const result = await write(
         SETTINGS_PATH,
@@ -623,6 +642,7 @@ export const useDataStore = create<DataState>((set, get) => {
         persons: result.data.persons,
         projectionDefaults: result.data.projectionDefaults,
         goals: result.data.goals ?? {},
+        prefs: result.data.prefs ?? {},
         settingsSha: result.sha,
       });
       return true;
@@ -633,6 +653,7 @@ export const useDataStore = create<DataState>((set, get) => {
         get().persons,
         get().projectionDefaults,
         get().goals,
+        get().prefs,
       );
       const result = await write(
         SETTINGS_PATH,
@@ -648,6 +669,34 @@ export const useDataStore = create<DataState>((set, get) => {
         persons: result.data.persons,
         projectionDefaults: result.data.projectionDefaults,
         goals: result.data.goals ?? {},
+        prefs: result.data.prefs ?? {},
+        settingsSha: result.sha,
+      });
+      return true;
+    },
+
+    savePrefs: async (prefs) => {
+      const localCurrent = settingsFileFromState(
+        get().persons,
+        get().projectionDefaults,
+        get().goals,
+        get().prefs,
+      );
+      const result = await write(
+        SETTINGS_PATH,
+        get().settingsSha,
+        localCurrent,
+        mergeSettings({ prefs }),
+        'Update preferences',
+      );
+      if (!result) {
+        return false;
+      }
+      set({
+        persons: result.data.persons,
+        projectionDefaults: result.data.projectionDefaults,
+        goals: result.data.goals ?? {},
+        prefs: result.data.prefs ?? {},
         settingsSha: result.sha,
       });
       return true;
