@@ -4,10 +4,14 @@ import { parseKcInput } from '../../engine/money';
 import { parsePercentInput } from '../../engine/percent';
 import { isExpenseGroup, TRANSFER_CATEGORY_ID } from '../../engine/summarize';
 import { SPENDING_AREAS } from '../../engine/areas';
+import { resolveCategoryIcon } from '../../engine/categoryIcons';
 import { useDataStore } from '../../store/data';
 import { newId } from '../../utils/id';
 import { CATEGORY_GROUP_LABELS, normalizeCategoryGroup } from '../shared/labels';
 import { MoneyInput } from '../shared/MoneyInput';
+import { CategoryIcon } from '../shared/icons/CategoryIcon';
+import { ICON_LIBRARY } from '../shared/icons/glyphs';
+import { ICON_COLORS, tileColorStyle } from '../shared/icons/colors';
 import forms from '../shared/forms.module.css';
 import styles from './Settings.module.css';
 
@@ -61,6 +65,12 @@ export function Settings() {
   const [goalDraft, setGoalDraft] = useState(() => halereToString(goals.monthlyLeftoverHalere));
   const [newName, setNewName] = useState('');
   const [newGroup, setNewGroup] = useState<CategoryGroup>('expense');
+  // The category whose icon picker is open, if any.
+  const [iconPickerFor, setIconPickerFor] = useState<string | null>(null);
+  // Set while an icon/colour save is in flight so the store-triggered reseed
+  // below keeps our optimistic drafts (and other rows' unsaved edits) instead
+  // of resetting every draft to the just-saved store value.
+  const [skipCategoryReseed, setSkipCategoryReseed] = useState(false);
 
   // Reseed (during render, React's recommended pattern) when the stored data
   // changes — e.g. after the initial load resolves or a save completes.
@@ -72,7 +82,14 @@ export function Settings() {
   const [seedCategories, setSeedCategories] = useState(categories);
   if (seedCategories !== categories) {
     setSeedCategories(categories);
-    setDrafts(categories.map((c) => ({ ...c })));
+    // An icon/colour save updated the store; keep the optimistic drafts (which
+    // already hold that change plus any other unsaved row edits) rather than
+    // overwriting them. Any other store change reseeds normally.
+    if (skipCategoryReseed) {
+      setSkipCategoryReseed(false);
+    } else {
+      setDrafts(categories.map((c) => ({ ...c })));
+    }
   }
   const [seedGoals, setSeedGoals] = useState(goals);
   if (seedGoals !== goals) {
@@ -122,6 +139,24 @@ export function Settings() {
       { id: newId('cat'), name: newName.trim(), group: newGroup, active: true },
     ]);
     setNewName('');
+  }
+
+  /**
+   * Persist an icon/colour choice for one category immediately, as its own
+   * upsert, without disturbing other rows' unsaved edits. We update the draft
+   * optimistically and set `skipCategoryReseed` so the store update this save
+   * triggers does not reset every draft (see the reseed guard above). On a
+   * failed save we revert both.
+   */
+  async function pickIcon(cat: Category, patch: { icon?: string; color?: string }) {
+    const updated: Category = { ...cat, ...patch };
+    setDrafts((prev) => prev.map((c) => (c.id === cat.id ? updated : c)));
+    setSkipCategoryReseed(true);
+    const ok = await saveCategories([updated]);
+    if (!ok) {
+      setSkipCategoryReseed(false);
+      setDrafts((prev) => prev.map((c) => (c.id === cat.id ? cat : c)));
+    }
   }
 
   async function saveCategoryDrafts() {
@@ -240,42 +275,91 @@ export function Settings() {
             const groupValue = reserved ? cat.group : normalizeCategoryGroup(cat.group);
             // Spending areas apply only to expense categories (incl. legacy).
             const showArea = isExpenseGroup(cat.group);
+            const resolved = resolveCategoryIcon(cat);
+            const pickerOpen = iconPickerFor === cat.id;
             return (
               <li key={cat.id} className={`${styles.catRow} ${inactive ? styles.catInactive : ''}`}>
-                <div className={styles.catMain}>
-                  <input
-                    className={forms.input}
-                    type="text"
-                    aria-label="Category name"
-                    value={cat.name}
-                    disabled={reserved}
-                    onChange={(e) => updateDraft(cat.id, { name: e.target.value })}
-                  />
-                  <select
-                    className={forms.select}
-                    aria-label="Category group"
-                    value={groupValue}
-                    disabled={reserved}
-                    onChange={(e) => updateDraft(cat.id, { group: e.target.value as CategoryGroup })}
+                <div className={styles.catLead}>
+                  <button
+                    type="button"
+                    className={styles.iconBtn}
+                    onClick={() => setIconPickerFor(pickerOpen ? null : cat.id)}
+                    aria-label={`Change icon for ${cat.name || 'category'}`}
+                    aria-expanded={pickerOpen}
                   >
-                    {(reserved ? [cat.group] : ASSIGNABLE_GROUPS).map((g) => (
-                      <option key={g} value={g}>
-                        {CATEGORY_GROUP_LABELS[g]}
-                      </option>
-                    ))}
-                  </select>
-                  {reserved ? (
-                    <span className={styles.reserved}>Reserved</span>
-                  ) : (
-                    <button
-                      type="button"
-                      className={styles.toggleBtn}
-                      onClick={() => toggleActive(cat.id)}
+                    <CategoryIcon iconId={resolved.iconId} color={resolved.colorId} size={32} />
+                  </button>
+                  <div className={styles.catMain}>
+                    <input
+                      className={forms.input}
+                      type="text"
+                      aria-label="Category name"
+                      value={cat.name}
+                      disabled={reserved}
+                      onChange={(e) => updateDraft(cat.id, { name: e.target.value })}
+                    />
+                    <select
+                      className={forms.select}
+                      aria-label="Category group"
+                      value={groupValue}
+                      disabled={reserved}
+                      onChange={(e) =>
+                        updateDraft(cat.id, { group: e.target.value as CategoryGroup })
+                      }
                     >
-                      {inactive ? 'Reactivate' : 'Deactivate'}
-                    </button>
-                  )}
+                      {(reserved ? [cat.group] : ASSIGNABLE_GROUPS).map((g) => (
+                        <option key={g} value={g}>
+                          {CATEGORY_GROUP_LABELS[g]}
+                        </option>
+                      ))}
+                    </select>
+                    {reserved ? (
+                      <span className={styles.reserved}>Reserved</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className={styles.toggleBtn}
+                        onClick={() => toggleActive(cat.id)}
+                      >
+                        {inactive ? 'Reactivate' : 'Deactivate'}
+                      </button>
+                    )}
+                  </div>
                 </div>
+                {pickerOpen && (
+                  <div className={styles.iconPicker}>
+                    <div className={styles.swatchRow}>
+                      {ICON_COLORS.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          className={styles.swatchBtn}
+                          data-selected={resolved.colorId === c.id}
+                          aria-label={`${c.name} colour`}
+                          aria-pressed={resolved.colorId === c.id}
+                          onClick={() => void pickIcon(cat, { color: c.id })}
+                        >
+                          <span className={styles.swatchDot} style={tileColorStyle(c.id)} />
+                        </button>
+                      ))}
+                    </div>
+                    <div className={styles.glyphGrid}>
+                      {ICON_LIBRARY.map((g) => (
+                        <button
+                          key={g.id}
+                          type="button"
+                          className={styles.glyphBtn}
+                          data-selected={resolved.iconId === g.id}
+                          aria-label={g.label}
+                          aria-pressed={resolved.iconId === g.id}
+                          onClick={() => void pickIcon(cat, { icon: g.id })}
+                        >
+                          <CategoryIcon iconId={g.id} color={resolved.colorId} size={30} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {showArea && (
                   <div className={styles.catArea}>
                     <label className={styles.catAreaLabel} htmlFor={`area-${cat.id}`}>

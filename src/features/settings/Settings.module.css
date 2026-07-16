@@ -59,12 +59,107 @@
   gap: var(--space-2);
 }
 
+/* Icon preview on the left, the fields grid filling the rest. */
+.catLead {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+/* Tappable icon that opens the picker — a ≥44px target around a 32px tile. */
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
 /* The main line: name, group, action — the grid the row used to be. */
 .catMain {
+  flex: 1;
+  min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
   gap: var(--space-2);
   align-items: center;
+}
+
+/* Inline icon picker: system-colour swatches over a scrollable glyph grid. */
+.iconPicker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius);
+}
+
+.swatchRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/* ≥44px tap target around a 28px colour dot. */
+.swatchBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.swatchDot {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-color: var(--tile-light);
+}
+
+.swatchBtn[data-selected='true'] .swatchDot {
+  border-color: var(--color-text);
+}
+
+@media (prefers-color-scheme: dark) {
+  .swatchDot {
+    background-color: var(--tile-dark);
+  }
+}
+
+.glyphGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: var(--space-1);
+  max-height: 216px;
+  overflow-y: auto;
+}
+
+/* ≥44px tap target around each glyph tile. */
+.glyphBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.glyphBtn[data-selected='true'] {
+  background: color-mix(in srgb, var(--color-primary) 18%, transparent);
 }
 
 /* The optional spending-area line beneath, shown for expense categories. */

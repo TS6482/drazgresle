@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SPENDING_AREAS, areaName, areaOf, spendingByArea } from './areas';
+import { SPENDING_AREAS, areaColor, areaIcon, areaName, areaOf, spendingByArea } from './areas';
 import type { CategorySummary } from './summarize';
 import type { Category } from '../types/data';
 
@@ -37,6 +37,20 @@ describe('areaName', () => {
     expect(areaName('others')).toBe('Others');
     expect(areaName('nope')).toBe('Others');
     expect(areaName('')).toBe('Others');
+  });
+});
+
+describe('areaIcon / areaColor', () => {
+  it('returns the area default tile for a known id', () => {
+    expect(areaIcon('essential')).toBe('house');
+    expect(areaColor('essential')).toBe('blue');
+    expect(areaIcon('food')).toBe('fork-knife');
+    expect(areaColor('food')).toBe('orange');
+  });
+
+  it('falls back to tag/gray for an unknown id', () => {
+    expect(areaIcon('nope')).toBe('tag');
+    expect(areaColor('nope')).toBe('gray');
   });
 });
 

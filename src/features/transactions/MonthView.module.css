@@ -128,11 +128,13 @@
   overflow: hidden;
 }
 
-/* Area header: fills the top of the card. */
+/* Area header: fills the top of the card. Icon on the left, the text block
+   (name + figures/bar/status) fills the rest. */
 .areaHeader {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
   width: 100%;
   min-height: 48px;
   margin: 0;
@@ -150,9 +152,11 @@
   border-bottom-color: var(--color-border);
 }
 
-/* iOS headline weight to set the area above its categories. */
+/* iOS headline weight to set the area above its categories. min-width:0 lets a
+   long name shrink/wrap instead of pushing the figures off the card. */
 .areaName {
   font-weight: 600;
+  min-width: 0;
 }
 
 /* Subcategory rows inside the area card — same surface; hierarchy from hairlines. */
@@ -176,11 +180,12 @@
   border-top: var(--hairline) solid var(--color-border);
 }
 
-/* The tappable accordion header of a budget row. */
+/* The tappable accordion header of a budget row. Icon left, text block right. */
 .budgetHeader {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
   width: 100%;
   min-height: 44px;
   margin: 0;
@@ -215,15 +220,30 @@
   overflow: visible;
 }
 
-.budgetTop {
+/* The text block right of the icon: name on the left, the figures/bar/status
+   stack on the right, vertically centred against each other. */
+.rowContent {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
 }
 
+/* Right-hand stack: figures, then the short progress bar and the over/target
+   status, all right-aligned so they hug the right edge under the numbers. */
+.rowRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  flex: none;
+}
+
 .budgetName {
   font-weight: 400;
+  min-width: 0;
 }
 
 .budgetFigures {

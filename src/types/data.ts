@@ -147,6 +147,17 @@ export interface Category {
    * income/savings/transfer categories.
    */
   area?: string;
+  /**
+   * Tile icon for this category — an `ICON_LIBRARY` id (see
+   * features/shared/icons). Unset falls back to the built-in default for the
+   * category id, then a generic glyph (see engine/categoryIcons.ts).
+   */
+  icon?: string;
+  /**
+   * Tile colour for this category — an `ICON_COLORS` id (see
+   * features/shared/icons). Unset falls back to the id default, then gray.
+   */
+  color?: string;
 }
 
 /** `categories.json`. */

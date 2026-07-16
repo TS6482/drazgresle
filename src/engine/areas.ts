@@ -7,10 +7,14 @@ import type { Category } from '../types/data';
 import type { CategorySummary } from './summarize';
 import { isExpenseGroup } from './summarize';
 
-/** A fixed spending area. `id` is stored on categories; `name` is user-facing. */
+/** A fixed spending area. `id` is stored on categories; `name` is user-facing.
+ *  `icon`/`color` are the area header's default tile (ICON_LIBRARY / ICON_COLORS
+ *  ids). */
 export interface SpendingArea {
   id: string;
   name: string;
+  icon: string;
+  color: string;
 }
 
 /**
@@ -18,11 +22,11 @@ export interface SpendingArea {
  * for expense categories with no (or an unknown) area assigned.
  */
 export const SPENDING_AREAS: SpendingArea[] = [
-  { id: 'essential', name: 'Essential Living' },
-  { id: 'food', name: 'Food' },
-  { id: 'entertainment', name: 'Entertainment' },
-  { id: 'kids', name: 'Kids' },
-  { id: 'others', name: 'Others' },
+  { id: 'essential', name: 'Essential Living', icon: 'house', color: 'blue' },
+  { id: 'food', name: 'Food', icon: 'fork-knife', color: 'orange' },
+  { id: 'entertainment', name: 'Entertainment', icon: 'star', color: 'pink' },
+  { id: 'kids', name: 'Kids', icon: 'child', color: 'teal' },
+  { id: 'others', name: 'Others', icon: 'tag', color: 'gray' },
 ];
 
 const AREA_BY_ID = new Map<string, SpendingArea>(SPENDING_AREAS.map((a) => [a.id, a]));
@@ -33,6 +37,16 @@ const FALLBACK_AREA_ID = 'others';
 /** The display name for an area id; an unknown id resolves to "Others". */
 export function areaName(id: string): string {
   return AREA_BY_ID.get(id)?.name ?? 'Others';
+}
+
+/** The default tile icon (ICON_LIBRARY id) for an area; unknown → tag. */
+export function areaIcon(id: string): string {
+  return AREA_BY_ID.get(id)?.icon ?? 'tag';
+}
+
+/** The default tile colour (ICON_COLORS id) for an area; unknown → gray. */
+export function areaColor(id: string): string {
+  return AREA_BY_ID.get(id)?.color ?? 'gray';
 }
 
 /**

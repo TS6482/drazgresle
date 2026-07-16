@@ -1,0 +1,22 @@
+/* Rounded-square icon tile. Size + border-radius come from inline style; the
+   fill is driven by the two custom properties CategoryIcon sets, switched by
+   theme here so light/dark are both correct. The glyph inherits white via
+   `color` and paints itself with currentColor. */
+.tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  color: #ffffff;
+  background-color: var(--tile-light);
+}
+
+@media (prefers-color-scheme: dark) {
+  .tile {
+    background-color: var(--tile-dark);
+  }
+}
+
+.glyph {
+  display: block;
+}

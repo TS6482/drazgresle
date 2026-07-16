@@ -10,7 +10,9 @@ import {
 } from '../../engine/classify';
 import { formatKc } from '../../engine/money';
 import { cashFlowForYear } from '../../engine/cashflow';
-import { SPENDING_AREAS, areaOf } from '../../engine/areas';
+import { SPENDING_AREAS, areaColor, areaIcon, areaOf } from '../../engine/areas';
+import { resolveCategoryIcon } from '../../engine/categoryIcons';
+import { CategoryIcon } from '../shared/icons/CategoryIcon';
 import { MonthMeter } from './MonthMeter';
 import { CashFlowChart } from './CashFlowChart';
 import { GoalReadout } from '../shared/GoalReadout';
@@ -160,6 +162,12 @@ export function MonthView() {
       return 'Uncategorized';
     }
     return byId.get(categoryId)?.name ?? categoryId;
+  }
+
+  /** The resolved icon tile for a category id (fallback for a missing one). */
+  function iconFor(categoryId: string): { iconId: string; colorId: string } {
+    const category = byId.get(categoryId);
+    return category ? resolveCategoryIcon(category) : { iconId: 'tag', colorId: 'gray' };
   }
 
   async function setCategory(tx: Transaction, categoryId: string | null) {
@@ -476,6 +484,7 @@ export function MonthView() {
     const met = savings && row.targetMet === true;
     const fraction = hasBudget ? progressFraction(row.spendHalere, row.budgetHalere ?? 0) : 0;
     const open = openCategories[row.categoryId] ?? false;
+    const icon = iconFor(row.categoryId);
     // Same objects as the full list — an edit here reflects there.
     const categoryTxs = ordered.filter((t) => t.categoryId === row.categoryId);
     return (
@@ -486,35 +495,38 @@ export function MonthView() {
           onClick={() => toggleCategory(row.categoryId)}
           aria-expanded={open}
         >
-          <span className={styles.budgetTop}>
+          <CategoryIcon iconId={icon.iconId} color={icon.colorId} size={26} />
+          <span className={styles.rowContent}>
             <span className={styles.budgetName}>{categoryName(row.categoryId)}</span>
-            <span className={styles.budgetFigures}>
-              {formatKc(row.spendHalere)}
-              {hasBudget && (
-                <span className={styles.budgetOf}> / {formatKc(row.budgetHalere ?? 0)}</span>
-              )}
-              <span
-                className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}
-                aria-hidden="true"
-              >
-                ›
+            <span className={styles.rowRight}>
+              <span className={styles.budgetFigures}>
+                {formatKc(row.spendHalere)}
+                {hasBudget && (
+                  <span className={styles.budgetOf}> / {formatKc(row.budgetHalere ?? 0)}</span>
+                )}
+                <span
+                  className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}
+                  aria-hidden="true"
+                >
+                  ›
+                </span>
               </span>
+              {hasBudget && (
+                <span className={styles.track}>
+                  <span
+                    className={`${styles.fill} ${!savings && over ? styles.fillOver : ''}`}
+                    style={{ width: `${fraction * 100}%` }}
+                  />
+                </span>
+              )}
+              {!savings && over && (
+                <span className={styles.overText}>
+                  Over by {formatKc(row.spendHalere - (row.budgetHalere ?? 0))}
+                </span>
+              )}
+              {met && <span className={styles.metText}>✓ target reached</span>}
             </span>
           </span>
-          {hasBudget && (
-            <span className={styles.track}>
-              <span
-                className={`${styles.fill} ${!savings && over ? styles.fillOver : ''}`}
-                style={{ width: `${fraction * 100}%` }}
-              />
-            </span>
-          )}
-          {!savings && over && (
-            <span className={styles.overText}>
-              Over by {formatKc(row.spendHalere - (row.budgetHalere ?? 0))}
-            </span>
-          )}
-          {met && <span className={styles.metText}>✓ target reached</span>}
         </button>
         {open &&
           (categoryTxs.length > 0 ? (
@@ -624,34 +636,41 @@ export function MonthView() {
                         onClick={() => toggleArea(group.area.id)}
                         aria-expanded={open}
                       >
-                        <span className={styles.budgetTop}>
+                        <CategoryIcon
+                          iconId={areaIcon(group.area.id)}
+                          color={areaColor(group.area.id)}
+                          size={28}
+                        />
+                        <span className={styles.rowContent}>
                           <span className={styles.areaName}>{group.area.name}</span>
-                          <span className={styles.budgetFigures}>
-                            {formatKc(group.spend)}
-                            {group.hasBudget && (
-                              <span className={styles.budgetOf}> / {formatKc(group.budget)}</span>
-                            )}
-                            <span
-                              className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}
-                              aria-hidden="true"
-                            >
-                              ›
+                          <span className={styles.rowRight}>
+                            <span className={styles.budgetFigures}>
+                              {formatKc(group.spend)}
+                              {group.hasBudget && (
+                                <span className={styles.budgetOf}> / {formatKc(group.budget)}</span>
+                              )}
+                              <span
+                                className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}
+                                aria-hidden="true"
+                              >
+                                ›
+                              </span>
                             </span>
+                            {group.hasBudget && (
+                              <span className={styles.track}>
+                                <span
+                                  className={`${styles.fill} ${group.over ? styles.fillOver : ''}`}
+                                  style={{ width: `${fraction * 100}%` }}
+                                />
+                              </span>
+                            )}
+                            {group.over && (
+                              <span className={styles.overText}>
+                                Over by {formatKc(group.spend - group.budget)}
+                              </span>
+                            )}
                           </span>
                         </span>
-                        {group.hasBudget && (
-                          <span className={styles.track}>
-                            <span
-                              className={`${styles.fill} ${group.over ? styles.fillOver : ''}`}
-                              style={{ width: `${fraction * 100}%` }}
-                            />
-                          </span>
-                        )}
-                        {group.over && (
-                          <span className={styles.overText}>
-                            Over by {formatKc(group.spend - group.budget)}
-                          </span>
-                        )}
                       </button>
                       {open && (
                         <ul className={`${styles.budgetList} ${styles.areaCategories}`}>
