@@ -109,6 +109,16 @@ import.
 
 ## Decision log
 
+- 2026-07-16 — Apple/iOS design language adopted (kept indigo, tuned to system indigo). Tokens
+  → iOS system palette, SF type scale, true-black dark, 12px radii, frosted nav/tab bars; Month
+  view restyled as inset grouped lists. Rolling out to other screens next.
+- 2026-07-16 — Monthly **goal** feature (v1 = "money left" target only, extensible): a single
+  recurring target for month-end leftover, **measured as income − spent − savings** (true
+  leftover); shown below the gauge and on Home with met / over / under status. The gauge's
+  "Left" number switches to this same leftover figure, and a neutral "Saved" segment is added to
+  the arc so it stays coherent. Budget over/under progress bar shortened to a small indicator
+  (was full-width and visually dominant).
+
 - 2026-07-15 — Category system overhaul (user): (1) engine groups simplified to
   **income / expense / savings** (+ reserved transfer) — `fixed`+`variable` merged into
   `expense`, legacy values tolerated in code, data migrated. (2) New **overarching spending

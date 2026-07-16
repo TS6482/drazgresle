@@ -28,15 +28,30 @@ function areaVar(areaId: string): string {
 /** Sentinel key for the unfilled remainder slice of the arc. */
 const REMAINDER_KEY = '__remainder';
 
+/** Sentinel key + neutral colour var for the "Saved" arc segment. */
+const SAVED_KEY = '__saved';
+const SAVED_VAR = '--area-saved';
+
+/** A selectable arc segment: a spending area, or the neutral "Saved" slice. */
+interface Segment {
+  key: string;
+  name: string;
+  valueHalere: number;
+  colorVar: string;
+}
+
 /**
  * An arched "barometer" (half-donut gauge): the whole arc represents the month's
  * INCOME, filled left-to-right with a coloured segment per spending area (in
- * SPENDING_AREAS order); the remaining arc is the empty track. The amount left
- * (income − spent) sits under the arch, red when negative. Hovering/tapping a
- * segment (or its legend entry) shows that area's amount and share of income.
+ * SPENDING_AREAS order), then a neutral "Saved" segment for money put away; the
+ * remaining arc is the empty track. The true amount left (income − spent −
+ * saved) sits under the arch, red when negative. Hovering/tapping a segment (or
+ * its legend entry) shows that segment's amount and share of income.
  *
- * Edge cases: no income → a muted line; overspent → segments fill the whole arc
- * (reads as full), "Left" shows negative, and an "Over by" note appears.
+ * Edge cases: no income → a muted line; allocation (spend + saved) exceeding
+ * income → segments fill the whole arc (reads as full), "Left" shows negative,
+ * and an "Over by" note appears. A withdrawal month (saved < 0) simply shows no
+ * Saved segment; "Left" still reflects true leftover.
  */
 export function MonthMeter({ summary, categories }: MonthMeterProps) {
   const byId = useMemo(
@@ -53,7 +68,8 @@ export function MonthMeter({ summary, categories }: MonthMeterProps) {
 
   const income = summary.incomeHalere;
   const spent = summary.spendHalere;
-  const leftover = income - spent;
+  const saved = summary.savedHalere;
+  const leftover = summary.leftoverHalere;
 
   if (income <= 0) {
     return (
@@ -63,22 +79,38 @@ export function MonthMeter({ summary, categories }: MonthMeterProps) {
     );
   }
 
-  // Segments to draw (areas with real spend), in fixed area order.
+  // Selectable segments: spending areas with real spend (fixed area order),
+  // then a neutral "Saved" segment when money was put away this month.
   const drawn = areas.filter((a) => a.spendHalere > 0);
-  const overspent = spent > income;
-  // When overspent the arc is entirely spending (no empty track); otherwise the
-  // remainder fills the rest of the arc up to income.
-  const remainder = overspent ? 0 : Math.max(0, income - spent);
-
-  // Half-donut slices: the area segments plus the empty remainder as a track
-  // slice. Recharts sums the values, so the arc spans income (or spent when
-  // overspent) across the semicircle.
-  const data = [
-    ...drawn.map((a) => ({ key: a.areaId, value: a.spendHalere })),
-    ...(remainder > 0 ? [{ key: REMAINDER_KEY, value: remainder }] : []),
+  const savedShown = saved > 0;
+  const segments: Segment[] = [
+    ...drawn.map((a) => ({
+      key: a.areaId,
+      name: a.name,
+      valueHalere: a.spendHalere,
+      colorVar: areaVar(a.areaId),
+    })),
+    ...(savedShown
+      ? [{ key: SAVED_KEY, name: 'Saved', valueHalere: saved, colorVar: SAVED_VAR }]
+      : []),
   ];
 
-  const active = drawn.find((a) => a.areaId === activeId) ?? null;
+  // The arc spans everything allocated (spend + money saved) up to income; a
+  // remainder slice fills any slack and vanishes when allocation exceeds income
+  // (the arc then reads as full).
+  const totalAllocated = spent + Math.max(0, saved);
+  const overAllocated = totalAllocated > income;
+  const remainder = overAllocated ? 0 : Math.max(0, income - totalAllocated);
+
+  // Half-donut slices: the segments plus the empty remainder as a track slice.
+  // Recharts sums the values, so the arc spans the allocation (capped at income
+  // by the remainder, or the total allocation when over) across the semicircle.
+  const data = [
+    ...segments.map((s) => ({ key: s.key, value: s.valueHalere, colorVar: s.colorVar })),
+    ...(remainder > 0 ? [{ key: REMAINDER_KEY, value: remainder, colorVar: null }] : []),
+  ];
+
+  const active = segments.find((s) => s.key === activeId) ?? null;
 
   function selectAt(index: number) {
     const slice = data[index];
@@ -110,11 +142,7 @@ export function MonthMeter({ summary, categories }: MonthMeterProps) {
               {data.map((slice) => (
                 <Cell
                   key={slice.key}
-                  fill={
-                    slice.key === REMAINDER_KEY
-                      ? 'var(--color-surface-alt)'
-                      : `var(${areaVar(slice.key)})`
-                  }
+                  fill={slice.colorVar ? `var(${slice.colorVar})` : 'var(--color-surface-alt)'}
                 />
               ))}
             </Pie>
@@ -128,20 +156,20 @@ export function MonthMeter({ summary, categories }: MonthMeterProps) {
         </div>
       </div>
 
-      {overspent && <p className={styles.overNote}>Over by {formatKc(spent - income)}</p>}
+      {leftover < 0 && <p className={styles.overNote}>Over by {formatKc(-leftover)}</p>}
 
       <div className={styles.detail}>
         {active ? (
           <>
             <span
               className={styles.detailSwatch}
-              style={{ background: `var(${areaVar(active.areaId)})` }}
+              style={{ background: `var(${active.colorVar})` }}
               aria-hidden="true"
             />
             <span className={styles.detailName}>{active.name}</span>
-            <span className={styles.detailValue}>{formatKc(active.spendHalere)}</span>
+            <span className={styles.detailValue}>{formatKc(active.valueHalere)}</span>
             <span className={styles.detailPct}>
-              {formatPercent((active.spendHalere / income) * 100)} of income
+              {formatPercent((active.valueHalere / income) * 100)} of income
             </span>
           </>
         ) : (
@@ -149,28 +177,28 @@ export function MonthMeter({ summary, categories }: MonthMeterProps) {
         )}
       </div>
 
-      {drawn.length > 0 && (
+      {segments.length > 0 && (
         <ul className={styles.legend}>
-          {drawn.map((a) => {
-            const on = a.areaId === activeId;
+          {segments.map((s) => {
+            const on = s.key === activeId;
             return (
-              <li key={a.areaId}>
+              <li key={s.key}>
                 <button
                   type="button"
                   className={`${styles.legendItem} ${on ? styles.legendItemOn : ''}`}
-                  onMouseEnter={() => setActiveId(a.areaId)}
+                  onMouseEnter={() => setActiveId(s.key)}
                   onMouseLeave={() => setActiveId(null)}
-                  onFocus={() => setActiveId(a.areaId)}
+                  onFocus={() => setActiveId(s.key)}
                   onBlur={() => setActiveId(null)}
-                  onClick={() => setActiveId(on ? null : a.areaId)}
+                  onClick={() => setActiveId(on ? null : s.key)}
                   aria-pressed={on}
                 >
                   <span
                     className={styles.legendSwatch}
-                    style={{ background: `var(${areaVar(a.areaId)})` }}
+                    style={{ background: `var(${s.colorVar})` }}
                     aria-hidden="true"
                   />
-                  {a.name}
+                  {s.name}
                 </button>
               </li>
             );

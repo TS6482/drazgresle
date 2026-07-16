@@ -236,10 +236,13 @@
   color: var(--color-text-muted);
 }
 
-/* iOS-thin progress track. */
+/* Short, thin over/under indicator — a secondary cue; the "Over by X" /
+   "✓ target reached" text stays the primary signal. Used by both category rows
+   and area headers. */
 .track {
   display: block;
-  height: 6px;
+  width: 64px;
+  height: 4px;
   border-radius: 999px;
   background: var(--color-surface-alt);
   overflow: hidden;

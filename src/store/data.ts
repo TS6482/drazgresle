@@ -16,6 +16,7 @@ import type {
   CategoriesFile,
   Category,
   CategoryBudget,
+  HouseholdGoals,
   IsoDate,
   MonthFile,
   Person,
@@ -179,9 +180,47 @@ function mergeBudgets(next: Record<string, CategoryBudget | null>) {
   };
 }
 
-/** Replace the settings file wholesale (rarely edited concurrently). */
-function mergeSettings(settings: SettingsFile) {
-  return (): SettingsFile => settings;
+/** The subset of settings a single write intends to change; unset fields are
+ *  preserved from the current file (so people-edits keep goals, and vice versa). */
+interface SettingsPatch {
+  persons?: Person[];
+  projectionDefaults?: Record<string, number>;
+  goals?: HouseholdGoals;
+}
+
+/**
+ * Overlay a settings patch onto the current file, preserving fields the write
+ * did not touch. Re-applied on top of the freshly-fetched file on a 409, so a
+ * concurrent edit to the OTHER section (people vs goals) survives. A goal with
+ * no `monthlyLeftoverHalere` clears the `goals` key entirely.
+ */
+function mergeSettings(patch: SettingsPatch) {
+  return (current: SettingsFile | null): SettingsFile => {
+    const goals = patch.goals !== undefined ? patch.goals : current?.goals;
+    const file: SettingsFile = {
+      schemaVersion: 1,
+      persons: patch.persons ?? current?.persons ?? [],
+      projectionDefaults: patch.projectionDefaults ?? current?.projectionDefaults ?? {},
+    };
+    if (goals && goals.monthlyLeftoverHalere !== undefined) {
+      file.goals = goals;
+    }
+    return file;
+  };
+}
+
+/** The current settings file as held in state, used as the local base a write
+ *  overlays its patch onto. Omits `goals` when no goal is set. */
+function settingsFileFromState(
+  persons: Person[],
+  projectionDefaults: Record<string, number>,
+  goals: HouseholdGoals,
+): SettingsFile {
+  const file: SettingsFile = { schemaVersion: 1, persons, projectionDefaults };
+  if (goals.monthlyLeftoverHalere !== undefined) {
+    file.goals = goals;
+  }
+  return file;
 }
 
 /** Upsert one transaction by id into its month file, preserving statements. */
@@ -283,6 +322,8 @@ interface DataState {
   rules: Rule[];
   persons: Person[];
   projectionDefaults: Record<string, number>;
+  /** Household goals from settings.json (default `{}` when none set). */
+  goals: HouseholdGoals;
   /** Cache of loaded month files' transactions, keyed by `'YYYY-MM'`. */
   months: Record<string, Transaction[]>;
   /** Cache of loaded month files' statement metadata, keyed by `'YYYY-MM'`. */
@@ -321,8 +362,11 @@ interface DataState {
   saveCategories: (categories: Category[]) => Promise<boolean>;
   /** Overlay per-category budgets (null removes a category) and persist. */
   saveBudgets: (next: Record<string, CategoryBudget | null>) => Promise<boolean>;
-  /** Persist household settings (persons + projection defaults). */
+  /** Persist household settings (persons + projection defaults); goals preserved. */
   saveSettings: (persons: Person[], projectionDefaults: Record<string, number>) => Promise<boolean>;
+  /** Persist household goals; persons + projection defaults preserved. An empty
+   *  object (no `monthlyLeftoverHalere`) clears the goal. */
+  saveGoals: (goals: HouseholdGoals) => Promise<boolean>;
   /** Upsert one transaction into its month file (derived from its date). */
   saveTransaction: (transaction: Transaction) => Promise<boolean>;
   /** Remove a transaction by id from the given month. */
@@ -352,6 +396,7 @@ const EMPTY_STATE = {
   rules: [] as Rule[],
   persons: [] as Person[],
   projectionDefaults: {} as Record<string, number>,
+  goals: {} as HouseholdGoals,
   months: {} as Record<string, Transaction[]>,
   monthStatements: {} as Record<string, StatementMeta[]>,
   currentMonthKey: monthKey(todayIso()),
@@ -439,6 +484,7 @@ export const useDataStore = create<DataState>((set, get) => {
           budgetsSha: budgetsFile?.sha ?? null,
           persons: settingsFile?.data.persons ?? [],
           projectionDefaults: settingsFile?.data.projectionDefaults ?? {},
+          goals: settingsFile?.data.goals ?? {},
           settingsSha: settingsFile?.sha ?? null,
           rules: rulesFile?.data.rules ?? [],
           rulesSha: rulesFile?.sha ?? null,
@@ -558,12 +604,16 @@ export const useDataStore = create<DataState>((set, get) => {
     },
 
     saveSettings: async (persons, projectionDefaults) => {
-      const settings: SettingsFile = { schemaVersion: 1, persons, projectionDefaults };
+      const localCurrent = settingsFileFromState(
+        get().persons,
+        get().projectionDefaults,
+        get().goals,
+      );
       const result = await write(
         SETTINGS_PATH,
         get().settingsSha,
-        settings,
-        mergeSettings(settings),
+        localCurrent,
+        mergeSettings({ persons, projectionDefaults }),
         'Update settings',
       );
       if (!result) {
@@ -572,6 +622,32 @@ export const useDataStore = create<DataState>((set, get) => {
       set({
         persons: result.data.persons,
         projectionDefaults: result.data.projectionDefaults,
+        goals: result.data.goals ?? {},
+        settingsSha: result.sha,
+      });
+      return true;
+    },
+
+    saveGoals: async (goals) => {
+      const localCurrent = settingsFileFromState(
+        get().persons,
+        get().projectionDefaults,
+        get().goals,
+      );
+      const result = await write(
+        SETTINGS_PATH,
+        get().settingsSha,
+        localCurrent,
+        mergeSettings({ goals }),
+        'Update monthly goal',
+      );
+      if (!result) {
+        return false;
+      }
+      set({
+        persons: result.data.persons,
+        projectionDefaults: result.data.projectionDefaults,
+        goals: result.data.goals ?? {},
         settingsSha: result.sha,
       });
       return true;

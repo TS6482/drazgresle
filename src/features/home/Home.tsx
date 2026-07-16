@@ -4,6 +4,7 @@ import { computeNetWorth } from '../../engine/networth';
 import { isExpenseGroup, summarizeMonth } from '../../engine/summarize';
 import { displayVendor } from '../../engine/classify';
 import { formatKc } from '../../engine/money';
+import { GoalReadout } from '../shared/GoalReadout';
 import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
 import { daysBetween, formatDayMonth, formatMonthLabel, todayIso } from '../../utils/dates';
@@ -19,6 +20,7 @@ export function Home() {
   const budgets = useDataStore((s) => s.budgets);
   const months = useDataStore((s) => s.months);
   const defaultMonthKey = useDataStore((s) => s.defaultMonthKey);
+  const goalTarget = useDataStore((s) => s.goals.monthlyLeftoverHalere);
   const loading = useDataStore((s) => s.loading);
 
   const transactions = useMemo(
@@ -142,6 +144,10 @@ export function Home() {
           <span className={styles.cardMeta}>Saved {formatKc(summary.savedHalere)}</span>
         )}
       </div>
+
+      {goalTarget !== undefined && summary.incomeHalere > 0 && (
+        <GoalReadout leftoverHalere={summary.leftoverHalere} targetHalere={goalTarget} />
+      )}
 
       {topCategories.length > 0 && (
         <div className={styles.block}>

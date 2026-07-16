@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Category, CategoryGroup, Person, PersonId } from '../../types/data';
+import type { Category, CategoryGroup, HouseholdGoals, Person, PersonId } from '../../types/data';
 import { parseKcInput } from '../../engine/money';
 import { parsePercentInput } from '../../engine/percent';
 import { isExpenseGroup, TRANSFER_CATEGORY_ID } from '../../engine/summarize';
@@ -49,13 +49,16 @@ function buildPeople(storePersons: Person[]): PersonDraft[] {
 export function Settings() {
   const storePersons = useDataStore((s) => s.persons);
   const projectionDefaults = useDataStore((s) => s.projectionDefaults);
+  const goals = useDataStore((s) => s.goals);
   const categories = useDataStore((s) => s.categories);
   const saveSettings = useDataStore((s) => s.saveSettings);
+  const saveGoals = useDataStore((s) => s.saveGoals);
   const saveCategories = useDataStore((s) => s.saveCategories);
   const saving = useDataStore((s) => s.saving);
 
   const [people, setPeople] = useState<PersonDraft[]>(() => buildPeople(storePersons));
   const [drafts, setDrafts] = useState<Category[]>(() => categories.map((c) => ({ ...c })));
+  const [goalDraft, setGoalDraft] = useState(() => halereToString(goals.monthlyLeftoverHalere));
   const [newName, setNewName] = useState('');
   const [newGroup, setNewGroup] = useState<CategoryGroup>('expense');
 
@@ -71,6 +74,11 @@ export function Settings() {
     setSeedCategories(categories);
     setDrafts(categories.map((c) => ({ ...c })));
   }
+  const [seedGoals, setSeedGoals] = useState(goals);
+  if (seedGoals !== goals) {
+    setSeedGoals(goals);
+    setGoalDraft(halereToString(goals.monthlyLeftoverHalere));
+  }
 
   function updatePerson(id: PersonId, patch: Partial<PersonDraft>) {
     setPeople((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
@@ -84,6 +92,15 @@ export function Settings() {
       annualBonusPct: parsePercentInput(p.bonus) ?? 0,
     }));
     await saveSettings(persons, projectionDefaults);
+  }
+
+  /** Save the monthly leftover goal. Blank input clears the goal (store `{}`). */
+  async function saveGoal() {
+    const trimmed = goalDraft.trim();
+    const parsed = parseKcInput(goalDraft);
+    const next: HouseholdGoals =
+      trimmed !== '' && parsed !== null ? { monthlyLeftoverHalere: parsed } : {};
+    await saveGoals(next);
   }
 
   function updateDraft(id: string, patch: Partial<Category>) {
@@ -119,6 +136,8 @@ export function Settings() {
       (p.salary.trim() === '' || parseKcInput(p.salary) !== null) &&
       (p.bonus.trim() === '' || parsePercentInput(p.bonus) !== null),
   );
+
+  const goalValid = goalDraft.trim() === '' || parseKcInput(goalDraft) !== null;
 
   return (
     <section className={styles.screen}>
@@ -179,6 +198,28 @@ export function Settings() {
             disabled={saving || !peopleValid}
           >
             {saving ? 'Saving…' : 'Save people'}
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.card}>
+        <h2 className={styles.cardHeading}>Monthly goal</h2>
+        <MoneyInput
+          id="goal-leftover"
+          label="Leave at least this much at month-end"
+          hint="Compared to what's left after spending and saving."
+          value={goalDraft}
+          onChange={setGoalDraft}
+          allowEmpty
+        />
+        <div className={forms.actions}>
+          <button
+            type="button"
+            className={forms.primary}
+            onClick={() => void saveGoal()}
+            disabled={saving || !goalValid}
+          >
+            {saving ? 'Saving…' : 'Save goal'}
           </button>
         </div>
       </div>

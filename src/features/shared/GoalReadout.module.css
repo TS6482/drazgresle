@@ -1,0 +1,21 @@
+/* iOS-style status pill: a tinted background (color-mix over the status colour)
+   with matching coloured text. Used for the monthly leftover-goal readout on
+   both Home and the Month view. */
+.pill {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.positive {
+  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  color: var(--color-success);
+}
+
+.negative {
+  background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+  color: var(--color-danger);
+}

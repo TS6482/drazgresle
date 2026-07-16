@@ -16,6 +16,7 @@
   --color-primary-strong: #4b49c9; /* pressed */
   --color-on-primary: #ffffff;
   --color-danger: #ff3b30; /* systemRed */
+  --color-success: #34c759; /* systemGreen — positive goal status */
   --color-warning-bg: #fff8e1;
   --color-warning-border: #ffcc00; /* systemYellow */
   --color-warning-text: #7a5c00;
@@ -60,6 +61,7 @@
     --color-primary-strong: #6f6de9;
     --color-on-primary: #ffffff;
     --color-danger: #ff453a; /* systemRed (dark) */
+    --color-success: #30d158; /* systemGreen (dark) */
     --color-warning-bg: #3a2f0b;
     --color-warning-border: #6b5300;
     --color-warning-text: #ffd60a;

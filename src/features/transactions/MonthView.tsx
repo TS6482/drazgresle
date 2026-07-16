@@ -13,6 +13,7 @@ import { cashFlowForYear } from '../../engine/cashflow';
 import { SPENDING_AREAS, areaOf } from '../../engine/areas';
 import { MonthMeter } from './MonthMeter';
 import { CashFlowChart } from './CashFlowChart';
+import { GoalReadout } from '../shared/GoalReadout';
 import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
 import { formatDayMonth, formatMonthLabel, shiftMonth } from '../../utils/dates';
@@ -44,6 +45,7 @@ export function MonthView() {
   const months = useDataStore((s) => s.months);
   const monthsLoaded = useDataStore((s) => s.monthsLoaded);
   const defaultMonthKey = useDataStore((s) => s.defaultMonthKey);
+  const goalTarget = useDataStore((s) => s.goals.monthlyLeftoverHalere);
   const loadMonth = useDataStore((s) => s.loadMonth);
   const saveTransaction = useDataStore((s) => s.saveTransaction);
   const saveTransactions = useDataStore((s) => s.saveTransactions);
@@ -549,6 +551,10 @@ export function MonthView() {
       <CashFlowChart series={cashFlow} />
 
       <MonthMeter summary={summary} categories={categories} />
+
+      {goalTarget !== undefined && summary.incomeHalere > 0 && (
+        <GoalReadout leftoverHalere={summary.leftoverHalere} targetHalere={goalTarget} />
+      )}
 
       <div className={styles.actionsRow}>
         <button type="button" className={styles.secondaryBtn} onClick={() => navigate('/import')}>

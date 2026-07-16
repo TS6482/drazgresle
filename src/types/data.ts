@@ -290,9 +290,22 @@ export interface Person {
   annualBonusPct: number;
 }
 
+/**
+ * Household-level goals stored in settings.json. v1 carries only the monthly
+ * leftover target, but it is modeled as an object so more goal types can be
+ * added later without a schema bump.
+ */
+export interface HouseholdGoals {
+  /** Target minimum leftover (income − spent − saved) to keep each month, in
+   *  halere. Absent = no monthly goal set. */
+  monthlyLeftoverHalere?: number;
+}
+
 /** `settings.json`. Seeded empty as `{persons: [], projectionDefaults: {}}`. */
 export interface SettingsFile {
   schemaVersion: 1;
   persons: Person[];
   projectionDefaults: Record<string, number>;
+  /** Optional household goals (see §0). Absent when none is set. */
+  goals?: HouseholdGoals;
 }
