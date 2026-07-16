@@ -114,31 +114,6 @@
   color: var(--color-text-muted);
 }
 
-/* Transfers section: the grouped-header label and its on/off switch share one
-   inset row; the switch hugs the right edge in line with the card content. */
-.transfersHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  min-height: 44px;
-  padding: 0 var(--space-4);
-}
-
-/* The label already carries the row's inset via .transfersHeader. */
-.headingFlush {
-  padding: 0;
-}
-
-/* Muted "Net …" summary under the transfer list. */
-.transfersFoot {
-  margin: 0;
-  padding: var(--space-2) var(--space-4) 0;
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
 /* --- inset grouped lists --- */
 /* A list container is one grouped card; its rows are borderless and separated
    by hairlines. */

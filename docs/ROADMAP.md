@@ -82,6 +82,12 @@ Statuses: `[ ]` todo · `[~]` in progress · `[x]` done.
       override-only budget no longer persists `defaultMonthlyHalere: 0` (which imposed a
       0 Kč ceiling on every other month) — field now optional, +2 regression tests (173 total).
       Real budgets.json checked: no stale 0-defaults, no migration needed.
+- [x] Transfers as a collapsed group card (user request 2026-07-16, confirmed via options
+      form): the Month view's Transfers section is now ONE area-style accordion card —
+      icon + "Transfers" + "Net …" header, tap to expand into the individual rows (inline
+      editor intact). The show/hide switch and the `prefs.showTransfers` setting are
+      removed (collapse replaces them; stale stored key ignored on read). Shared Toggle
+      component kept for future settings.
 - [x] Month view (`#/month`): income/spent/net summary, budget bars with over-by warnings,
       transaction list with inline category edit; category management + salaries in Settings;
       new "this month's money" home; 4-tab navigation. *(Phase 2a.)*

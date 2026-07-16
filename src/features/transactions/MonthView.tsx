@@ -5,6 +5,7 @@ import {
   isSavingsGroup,
   isTransferCategory,
   summarizeMonth,
+  TRANSFER_CATEGORY_ID,
 } from '../../engine/summarize';
 import {
   classify,
@@ -19,7 +20,6 @@ import { SPENDING_AREAS, areaColor, areaIcon, areaOf } from '../../engine/areas'
 import { resolveCategoryIcon } from '../../engine/categoryIcons';
 import { CategoryIcon } from '../shared/icons/CategoryIcon';
 import { GoalReadout } from '../shared/GoalReadout';
-import { Toggle } from '../shared/Toggle';
 import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
 import { formatDayMonth, formatMonthLabel, shiftMonth } from '../../utils/dates';
@@ -60,8 +60,6 @@ export function MonthView() {
   const monthsLoaded = useDataStore((s) => s.monthsLoaded);
   const defaultMonthKey = useDataStore((s) => s.defaultMonthKey);
   const goalTarget = useDataStore((s) => s.goals.monthlyLeftoverHalere);
-  const prefs = useDataStore((s) => s.prefs);
-  const savePrefs = useDataStore((s) => s.savePrefs);
   const loadMonth = useDataStore((s) => s.loadMonth);
   const saveTransaction = useDataStore((s) => s.saveTransaction);
   const saveTransactions = useDataStore((s) => s.saveTransactions);
@@ -83,6 +81,8 @@ export function MonthView() {
   const [openAreas, setOpenAreas] = useState<Record<string, boolean>>({});
   // The full transaction list is collapsed by default; unclassified stay pinned.
   const [showAll, setShowAll] = useState(false);
+  // The Transfers group card is collapsed by default (per-visit UI state).
+  const [transfersOpen, setTransfersOpen] = useState(false);
 
   // Months January..viewed of the viewed year — for the cash-flow chart.
   const yearMonths = useMemo(() => {
@@ -109,6 +109,7 @@ export function MonthView() {
     setOpenCategories({});
     setOpenAreas({});
     setShowAll(false);
+    setTransfersOpen(false);
     setPending(null);
     setNoteDraft(null);
     setViewedMonth((m) => shiftMonth(m, delta));
@@ -178,8 +179,9 @@ export function MonthView() {
     () => transferTxs.reduce((sum, t) => sum + t.amountHalere, 0),
     [transferTxs],
   );
-  // Default ON: an unset preference shows the section.
-  const showTransfers = prefs.showTransfers ?? true;
+  // The transfer category's tile icon — falls back to tag/gray when the reserved
+  // category is absent (the section is display-only regardless).
+  const transferIcon = iconFor(TRANSFER_CATEGORY_ID);
 
   // Budget-vs-actual splits into spending (ceiling budgets) and saving (target
   // floors). Income rows never appear — they are already the Income total. The
@@ -756,21 +758,33 @@ export function MonthView() {
       )}
 
       {transferTxs.length > 0 && (
-        <div className={styles.block}>
-          <div className={styles.transfersHeader}>
-            <h2 className={`${styles.blockHeading} ${styles.headingFlush}`}>Transfers</h2>
-            <Toggle
-              checked={showTransfers}
-              onChange={(next) => void savePrefs({ ...prefs, showTransfers: next })}
-              label="Show transfers"
-              disabled={saving}
-            />
-          </div>
-          {showTransfers && (
-            <>
-              <ul className={styles.txList}>{transferTxs.map(renderRow)}</ul>
-              <p className={styles.transfersFoot}>Net {formatKc(transferNet)}</p>
-            </>
+        <div className={styles.areaGroup}>
+          <button
+            type="button"
+            className={styles.areaHeader}
+            onClick={() => setTransfersOpen((v) => !v)}
+            aria-expanded={transfersOpen}
+          >
+            <CategoryIcon iconId={transferIcon.iconId} color={transferIcon.colorId} size={28} />
+            <span className={styles.rowContent}>
+              <span className={styles.areaName}>Transfers</span>
+              <span className={styles.rowRight}>
+                <span className={styles.budgetFigures}>
+                  Net {formatKc(transferNet)}
+                  <span
+                    className={`${styles.chevron} ${transfersOpen ? styles.chevronOpen : ''}`}
+                    aria-hidden="true"
+                  >
+                    ›
+                  </span>
+                </span>
+              </span>
+            </span>
+          </button>
+          {transfersOpen && (
+            <ul className={`${styles.txList} ${styles.drillList}`}>
+              {transferTxs.map(renderRow)}
+            </ul>
           )}
         </div>
       )}

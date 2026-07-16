@@ -315,14 +315,16 @@ export interface HouseholdGoals {
 }
 
 /**
- * Household-level UI preferences stored in settings.json. Small extensible
- * object (like `HouseholdGoals`) so more toggles can be added without a schema
- * bump. Every field is optional; an absent value falls back to its default.
+ * Household-level UI preferences stored in settings.json. Currently empty — no
+ * preferences are stored — but kept as a small extensible bag (like
+ * `HouseholdGoals`) so toggles can be added later without a schema bump. When a
+ * field is added, redeclare this as an `interface` with optional members; every
+ * such field falls back to its default when absent. Modeled as
+ * `Record<string, never>` rather than an empty `interface` so it does not trip
+ * `@typescript-eslint/no-empty-object-type`. A stale key left in settings.json
+ * (e.g. an old `showTransfers`) is ignored on read.
  */
-export interface HouseholdPrefs {
-  /** Show the Transfers section in the Month view. Absent defaults to true. */
-  showTransfers?: boolean;
-}
+export type HouseholdPrefs = Record<string, never>;
 
 /** `settings.json`. Seeded empty as `{persons: [], projectionDefaults: {}}`. */
 export interface SettingsFile {
