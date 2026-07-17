@@ -33,9 +33,10 @@
   pointer-events: none;
 }
 
-/* The sole figure inside the arch — the month's true leftover. */
+/* The sole figure inside the arch — the month's true leftover. Kept at the lg
+   step so it fits comfortably under the arc above the month picker. */
 .leftValue {
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
   font-weight: 700;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
