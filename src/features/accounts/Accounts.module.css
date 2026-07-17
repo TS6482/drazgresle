@@ -22,7 +22,8 @@
   border-radius: var(--radius);
   background: var(--color-primary);
   color: var(--color-on-primary);
-  border: 1px solid var(--color-primary);
+  border: none;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -86,21 +87,33 @@
   gap: var(--space-2);
 }
 
+/* iOS grouped section header: small systemGray caps, inset to align with the
+   grouped-card row text below. */
 .groupHeading {
   margin: 0;
+  padding: 0 var(--space-4);
   font-size: var(--text-sm);
+  font-weight: 400;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   color: var(--color-text-muted);
 }
 
+/* One inset grouped card per asset class; rows are borderless and split by
+   hairlines (separation comes from the grouped-gray page background). */
 .list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.list > li + li {
+  border-top: var(--hairline) solid var(--color-border);
 }
 
 .accountRow {
@@ -111,9 +124,8 @@
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  background: transparent;
+  border: none;
   cursor: pointer;
   text-align: left;
   color: var(--color-text);
@@ -142,17 +154,24 @@
   white-space: nowrap;
 }
 
+/* --- Add / edit account form --- */
+/* Detail sections (mortgage / family-loan / purchase) group related fields
+   under an iOS inset section header. Borderless like the always-visible top
+   fields — the white inputs carry the definition against the grouped-gray page. */
 .fieldset {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: var(--space-4);
+  border: none;
+  padding: 0;
   margin: 0;
+  min-width: 0;
 }
 
 .legend {
-  padding: 0 var(--space-2);
+  padding: 0;
+  margin-bottom: var(--space-2);
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   color: var(--color-text-muted);
 }
 
@@ -216,4 +235,47 @@
 
 .gainNeg {
   color: var(--color-danger);
+}
+
+/* iOS action buttons — filled primary, tinted secondary, tinted danger. Mirrors
+   the MonthView button set so the form matches the rest of the app. */
+.primaryBtn {
+  flex: 1;
+  min-height: 48px;
+  border-radius: var(--radius);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border: none;
+  font-size: var(--text-base);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primaryBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.secondaryBtn {
+  flex: 1;
+  min-height: 48px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  border: none;
+  font-size: var(--text-base);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.deleteBtn {
+  flex: 1;
+  min-height: 48px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  color: var(--color-danger);
+  border: none;
+  font-size: var(--text-base);
+  font-weight: 600;
+  cursor: pointer;
 }

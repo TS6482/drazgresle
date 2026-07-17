@@ -553,7 +553,7 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
               </div>
             );
           })}
-          <button type="button" className={forms.secondary} onClick={addPlanRow}>
+          <button type="button" className={styles.secondaryBtn} onClick={addPlanRow}>
             + Add year
           </button>
 
@@ -570,13 +570,13 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
       <div className={forms.actions}>
         <button
           type="button"
-          className={forms.primary}
+          className={styles.primaryBtn}
           onClick={() => void handleSubmit()}
           disabled={!canSave || saving}
         >
           {saving ? 'Saving…' : 'Save'}
         </button>
-        <button type="button" className={forms.secondary} onClick={onDone}>
+        <button type="button" className={styles.secondaryBtn} onClick={onDone}>
           Cancel
         </button>
       </div>
@@ -585,7 +585,7 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
         <div className={forms.actions}>
           <button
             type="button"
-            className={forms.danger}
+            className={styles.deleteBtn}
             onClick={() => void handleDeactivate()}
             disabled={saving}
           >
