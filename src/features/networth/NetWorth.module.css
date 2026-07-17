@@ -22,7 +22,8 @@
   border-radius: var(--radius);
   background: var(--color-primary);
   color: var(--color-on-primary);
-  border: 1px solid var(--color-primary);
+  border: none;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -47,7 +48,6 @@
   --chart-net: var(--color-text);
 
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: var(--space-3) var(--space-2) var(--space-2);
 }
@@ -72,7 +72,6 @@
 .chartPlaceholder {
   min-height: 320px;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
   border-radius: var(--radius);
 }
 
@@ -199,21 +198,37 @@
   gap: var(--space-2);
 }
 
+/* The helper line under the section header is inset to align with the header
+   and the grouped-card rows. */
+.group > .muted {
+  padding: 0 var(--space-4);
+}
+
+/* iOS grouped section header: small systemGray caps, inset to align with rows. */
 .groupHeading {
   margin: 0;
+  padding: 0 var(--space-4);
   font-size: var(--text-sm);
+  font-weight: 400;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   color: var(--color-text-muted);
 }
 
+/* One inset grouped card; rows are borderless and split by hairlines. */
 .list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.list > li + li {
+  border-top: var(--hairline) solid var(--color-border);
 }
 
 .historyRow {
@@ -224,9 +239,8 @@
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  background: transparent;
+  border: none;
   cursor: pointer;
   text-align: left;
   color: var(--color-text);

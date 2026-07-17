@@ -13,20 +13,21 @@
   border-radius: var(--radius);
   background: var(--color-primary);
   color: var(--color-on-primary);
-  border: 1px solid var(--color-primary);
+  border: none;
   font-size: var(--text-lg);
   font-weight: 600;
   cursor: pointer;
 }
 
-/* Secondary quick action — import a bank statement. */
+/* Secondary quick action — import a bank statement. iOS tinted fill. */
 .importButton {
-  min-height: 44px;
+  min-height: 48px;
   border-radius: var(--radius);
-  background: var(--color-surface);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  border: none;
   font-size: var(--text-base);
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -40,14 +41,14 @@
   margin-bottom: var(--space-3);
 }
 
-/* This-month card. */
+/* This-month card — iOS inset grouped card (no border; the grouped-gray page
+   background provides the separation). */
 .card {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-4);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
   border-radius: var(--radius);
 }
 
@@ -120,20 +121,26 @@
   gap: var(--space-2);
 }
 
+/* iOS grouped section header: small systemGray caps, inset to align with rows. */
 .blockHeading {
+  padding: 0 var(--space-4);
   font-size: var(--text-sm);
+  font-weight: 400;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   color: var(--color-text-muted);
 }
 
+/* One inset grouped card; rows are borderless and split by hairlines. */
 .miniList {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
 .miniRow {
@@ -141,10 +148,13 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  background: transparent;
+}
+
+.miniRow + .miniRow {
+  border-top: var(--hairline) solid var(--color-border);
 }
 
 .recentWho {
@@ -167,7 +177,6 @@
 
 .miniAmount {
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
 }
 
 .income {
@@ -179,15 +188,15 @@
   color: var(--color-text-muted);
 }
 
-/* Compact net-worth line — one tap to the trend. */
+/* Compact net-worth line — one tap to the trend. Single inset grouped card. */
 .netLine {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+  min-height: 44px;
   padding: var(--space-3) var(--space-4);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
   border-radius: var(--radius);
   cursor: pointer;
   color: var(--color-text);
