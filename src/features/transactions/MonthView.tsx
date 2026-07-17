@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import type { TouchEvent } from 'react';
 import type { Category, Rule, RuleField, Transaction } from '../../types/data';
 import { isExpenseGroup, isSavingsGroup, summarizeMonth } from '../../engine/summarize';
 import {
@@ -104,6 +105,41 @@ export function MonthView() {
     setPending(null);
     setNoteDraft(null);
     setViewedMonth((m) => shiftMonth(m, delta));
+  }
+
+  // First-touch coordinates for swipe detection — a ref, not state, so tracking a
+  // drag never causes a re-render.
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+
+  function handleTouchStart(e: TouchEvent<HTMLElement>) {
+    // Ignore pinch/multi-touch gestures entirely.
+    if (e.touches.length > 1) {
+      touchStart.current = null;
+      return;
+    }
+    // Drags inside a form field are text-cursor moves, not page swipes.
+    if (e.target instanceof Element && e.target.closest('input, textarea, select')) {
+      touchStart.current = null;
+      return;
+    }
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+
+  /** A clearly-horizontal swipe pages months like the arrows: left = next month
+   *  (turning the page forward), right = previous. Mostly-vertical drags are
+   *  scrolls and are ignored. */
+  function handleTouchEnd(e: TouchEvent<HTMLElement>) {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start) {
+      return;
+    }
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > 1.8 * Math.abs(dy)) {
+      goToMonth(dx < 0 ? 1 : -1);
+    }
   }
 
   function toggleCategory(categoryId: string) {
@@ -573,7 +609,7 @@ export function MonthView() {
   }
 
   return (
-    <section className={styles.screen}>
+    <section className={styles.screen} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       <div className={styles.monthNav}>
         <button
           type="button"

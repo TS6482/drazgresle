@@ -4,8 +4,11 @@
   gap: var(--space-4);
 }
 
-/* Prominent quick-add — the primary home action. */
+/* Prominent quick-add — the primary home action. As the first interactive
+   element it needs top clearance from the floating settings circle (which now
+   overlaps the top-right of the content), so its right end stays tappable. */
 .addButton {
+  margin-top: 44px;
   min-height: 60px;
   border-radius: var(--radius);
   background: var(--color-primary);

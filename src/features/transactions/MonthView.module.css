@@ -32,6 +32,20 @@
   letter-spacing: -0.02em;
 }
 
+/* Touch devices swipe left/right by hand to change months, so drop the arrows
+   and centre the title. Desktop (a mouse can't swipe) keeps the tappable arrows,
+   and there the floating settings circle pins to the far viewport corner, so it
+   never collides with the content column. */
+@media (hover: none) and (pointer: coarse) {
+  .navBtn {
+    display: none;
+  }
+
+  .monthNav {
+    justify-content: center;
+  }
+}
+
 .income {
   color: var(--color-primary);
 }

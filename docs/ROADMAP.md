@@ -103,6 +103,13 @@ Statuses: `[ ]` todo · `[~]` in progress · `[x]` done.
       moved into a "Connection" section at the bottom of Settings; content and the
       read-only/error banners take over the safe-area inset handling. Budget-vs-actual
       figures on the Month view shrunk to text-sm so they stop crowding category names.
+- [x] Liquid Glass settings button + content to top + swipe months (user requests
+      2026-07-17): the ⋯ circle restyled as an Apple Liquid Glass lens (radial highlight,
+      blur+saturate, specular inset edges, float shadows, press dip; dark-mode and
+      no-backdrop-filter fallbacks); content now starts right below the notch and scrolls
+      under the circle (Home's first button keeps 44px clearance since it's tappable);
+      Month view pages by horizontal swipe on touch devices (guarded against text-cursor
+      drags in form fields), arrows remain on desktop where a mouse can't swipe.
 - [x] Month view (`#/month`): income/spent/net summary, budget bars with over-by warnings,
       transaction list with inline category edit; category management + salaries in Settings;
       new "this month's money" home; 4-tab navigation. *(Phase 2a.)*
