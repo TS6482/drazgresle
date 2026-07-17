@@ -96,8 +96,15 @@ export function MonthView() {
     }
   }, [yearMonths, loadMonth]);
 
+  // Direction the incoming month should slide from. Null on first paint (no
+  // animation); set on every arrow/swipe change.
+  const [slideFrom, setSlideFrom] = useState<'left' | 'right' | null>(null);
+
   /** Change months, dropping the previous month's transient view state. */
   function goToMonth(delta: number) {
+    // New content enters from the direction of travel: next month → in from the
+    // right, previous month → in from the left.
+    setSlideFrom(delta > 0 ? 'right' : 'left');
     setAutoResult(null);
     setOpenCategories({});
     setOpenAreas({});
@@ -608,6 +615,16 @@ export function MonthView() {
     );
   }
 
+  // The month body (everything under the nav) is keyed by month so it remounts
+  // and replays its slide-in on each change; the nav swaps in place.
+  const slideClass = `${styles.monthBody} ${
+    slideFrom === 'right'
+      ? styles.slideFromRight
+      : slideFrom === 'left'
+        ? styles.slideFromLeft
+        : ''
+  }`.trim();
+
   return (
     <section className={styles.screen} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       <div className={styles.monthNav}>
@@ -630,6 +647,7 @@ export function MonthView() {
         </button>
       </div>
 
+      <div key={viewedMonth} className={slideClass}>
       <Suspense fallback={<div className={styles.cashFlowPlaceholder} />}>
         <CashFlowChart series={cashFlow} />
       </Suspense>
@@ -786,6 +804,7 @@ export function MonthView() {
           )}
         </div>
       )}
+      </div>
     </section>
   );
 }

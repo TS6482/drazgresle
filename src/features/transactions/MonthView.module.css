@@ -7,6 +7,54 @@
   gap: var(--space-5);
 }
 
+/* Everything under the month nav lives in one keyed wrapper so it can slide in
+   on each month change; it keeps the same vertical rhythm the section had. */
+.monthBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* Directional slide makes the month turn read as motion, not a cut: the new
+   month enters from the side you're travelling toward. */
+@keyframes enterFromRight {
+  from {
+    transform: translateX(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes enterFromLeft {
+  from {
+    transform: translateX(-40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.slideFromRight {
+  animation: 250ms ease-out both enterFromRight;
+}
+
+.slideFromLeft {
+  animation: 250ms ease-out both enterFromLeft;
+}
+
+/* Honour a reduced-motion preference: switch months instantly, no slide. */
+@media (prefers-reduced-motion: reduce) {
+  .slideFromRight,
+  .slideFromLeft {
+    animation: none;
+  }
+}
+
 /* Month picker: borderless tinted arrows around a bold centred title. */
 .monthNav {
   display: flex;
