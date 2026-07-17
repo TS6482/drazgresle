@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useSessionStore } from './store/session';
 import { useDataStore } from './store/data';
-import { navigate, useHashRoute } from './router/useHashRoute';
+import { useHashRoute } from './router/useHashRoute';
 import { TokenEntry } from './features/auth/TokenEntry';
 import { Home } from './features/home/Home';
 import { NetWorth } from './features/networth/NetWorth';
@@ -13,6 +13,7 @@ import { Budgets } from './features/budgets/Budgets';
 import { Settings } from './features/settings/Settings';
 import { ReadOnlyBanner } from './components/ReadOnlyBanner';
 import { TabBar } from './components/TabBar';
+import { MoreMenu } from './components/MoreMenu';
 import shell from './styles/app.module.css';
 
 export function App() {
@@ -47,17 +48,8 @@ function ConnectedApp() {
 
   return (
     <div className={shell.app}>
-      {/* Floating "more" button → Settings. Hidden on Settings itself (no-op there). */}
-      {route !== '/settings' && (
-        <button
-          className={shell.moreButton}
-          type="button"
-          aria-label="Settings"
-          onClick={() => navigate('/settings')}
-        >
-          ⋯
-        </button>
-      )}
+      {/* Floating "more" menu (⋯). Hidden on Settings itself. */}
+      <MoreMenu />
       {readOnly && <ReadOnlyBanner />}
       {error && (
         <div className={shell.dataError} role="alert">

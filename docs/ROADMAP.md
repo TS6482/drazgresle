@@ -114,6 +114,11 @@ Statuses: `[ ]` todo · `[~]` in progress · `[x]` done.
       (savings → neutral gray; income keeps stored colour), Settings colour picker
       removed, Category.color deprecated; area palette re-validated with the dataviz
       checker. Empty months keep the dropdown reachable. 180 tests.
+- [x] Floating ⋯ becomes a menu (user request 2026-07-17, "Always a menu"): the Liquid-Glass
+      ⋯ button now opens an iOS popover — "Settings" first, then any actions the current screen
+      registers via a new `useMenuStore` screen-actions registry. Accounts' in-page "+ Add"
+      button moved into the menu as "Add account". Reusable MoreMenu component; outside-tap /
+      Escape / route-change dismissal, focus-first-item a11y.
 - [x] Liquid Glass settings button + content to top + swipe months (user requests
       2026-07-17): the ⋯ circle restyled as an Apple Liquid Glass lens (radial highlight,
       blur+saturate, specular inset edges, float shadows, press dip; dark-mode and

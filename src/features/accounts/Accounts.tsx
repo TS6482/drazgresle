@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Account } from '../../types/data';
 import { classify } from '../../engine/networth';
 import { mortgageBalanceAt } from '../../engine/loan';
 import { formatKc } from '../../engine/money';
 import { formatPercent } from '../../engine/percent';
 import { useDataStore } from '../../store/data';
+import { useMenuStore } from '../../store/menu';
 import { navigate } from '../../router/useHashRoute';
 import { todayIso } from '../../utils/dates';
 import { ACCOUNT_TYPE_LABELS, CLASS_LABELS, CLASS_ORDER } from '../shared/labels';
@@ -51,6 +52,14 @@ export function Accounts() {
   const [editing, setEditing] = useState<Account | null>(null);
   const [creating, setCreating] = useState(false);
 
+  // Contribute the screen's "Add account" action to the floating ⋯ menu.
+  const setActions = useMenuStore((s) => s.setActions);
+  const clearActions = useMenuStore((s) => s.clearActions);
+  useEffect(() => {
+    setActions([{ id: 'add-account', label: 'Add account', run: () => setCreating(true) }]);
+    return () => clearActions();
+  }, [setActions, clearActions]);
+
   const latestBalances = snapshots.length > 0 ? snapshots[snapshots.length - 1].balances : {};
 
   const grouped = useMemo(() => {
@@ -79,9 +88,6 @@ export function Accounts() {
     <section className={styles.screen}>
       <div className={styles.topBar}>
         <h1 className={styles.heading}>Accounts</h1>
-        <button type="button" className={styles.addButton} onClick={() => setCreating(true)}>
-          + Add
-        </button>
       </div>
 
       {loading && accounts.length === 0 && <p className={styles.muted}>Loading…</p>}

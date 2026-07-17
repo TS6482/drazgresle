@@ -16,17 +16,6 @@
   font-size: var(--text-xl);
 }
 
-.addButton {
-  min-height: 44px;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  border: none;
-  font-weight: 600;
-  cursor: pointer;
-}
-
 .muted {
   margin: 0;
   color: var(--color-text-muted);

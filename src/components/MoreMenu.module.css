@@ -1,0 +1,147 @@
+/* Floating "more" button → opens the popover menu, styled as Apple "Liquid Glass"
+   (iOS 26): a blurred glass lens rather than a flat frosted disc. The layers
+   imitate physical glass — a radial gradient puts an off-centre bright spot (the
+   lens highlight), backdrop blur+saturate refracts the content behind it, inset
+   shadows draw a bright top specular edge and a faint bottom rim, and two outer
+   shadows float it off the page. Light mode is the base; dark mode overridden
+   below. The popover shares the same material so button and menu read as one. */
+.moreButton {
+  position: fixed;
+  top: calc(var(--space-3) + env(safe-area-inset-top, 0px));
+  right: var(--space-4);
+  z-index: 10;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: radial-gradient(
+    120% 120% at 30% 20%,
+    rgba(255, 255, 255, 0.55),
+    rgba(255, 255, 255, 0.15) 60%,
+    rgba(255, 255, 255, 0.05)
+  );
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.7),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.15),
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    0 8px 24px rgba(0, 0, 0, 0.1);
+  color: var(--color-primary);
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 150ms ease;
+}
+
+/* Press affordance: the lens dips slightly under the finger. */
+.moreButton:active {
+  transform: scale(0.94);
+}
+
+/* Dark mode: dial the glass tints and highlights way down so the lens reads as
+   subtle bright edges on dark content, and deepen the float shadows. */
+@media (prefers-color-scheme: dark) {
+  .moreButton {
+    background: radial-gradient(
+      120% 120% at 30% 20%,
+      rgba(255, 255, 255, 0.18),
+      rgba(255, 255, 255, 0.06) 60%,
+      rgba(255, 255, 255, 0.02)
+    );
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.25),
+      inset 0 -1px 1px rgba(255, 255, 255, 0.06),
+      0 2px 8px rgba(0, 0, 0, 0.5),
+      0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* Without backdrop-filter the translucent glass would show as a near-invisible
+   wash over scrolling content, so fall back to an opaque surface. */
+@supports not (backdrop-filter: blur(1px)) {
+  .moreButton {
+    background: var(--color-surface);
+  }
+}
+
+/* Transparent full-viewport catcher: sits above the tab bar / content so an
+   outside tap dismisses the menu; the popover paints above it. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+/* The popover: a small frosted card anchored just below the button, right-aligned
+   to it. Same Liquid-Glass material as the button so the two read as one system. */
+.popover {
+  position: fixed;
+  top: calc(var(--space-3) + env(safe-area-inset-top, 0px) + 44px + var(--space-2));
+  right: var(--space-4);
+  z-index: 41;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: radial-gradient(
+    120% 120% at 30% 20%,
+    rgba(255, 255, 255, 0.55),
+    rgba(255, 255, 255, 0.15) 60%,
+    rgba(255, 255, 255, 0.05)
+  );
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.7),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.15),
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .popover {
+    background: radial-gradient(
+      120% 120% at 30% 20%,
+      rgba(255, 255, 255, 0.18),
+      rgba(255, 255, 255, 0.06) 60%,
+      rgba(255, 255, 255, 0.02)
+    );
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.25),
+      inset 0 -1px 1px rgba(255, 255, 255, 0.06),
+      0 2px 8px rgba(0, 0, 0, 0.5),
+      0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .popover {
+    background: var(--color-surface);
+  }
+}
+
+/* Each menu item: full-width tinted row, ≥44px tap height, split by hairlines. */
+.item {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-4);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-primary);
+  font-size: var(--text-base);
+}
+
+.item + .item {
+  border-top: var(--hairline) solid var(--color-border);
+}
