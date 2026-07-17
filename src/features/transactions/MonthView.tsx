@@ -14,6 +14,7 @@ import { resolveCategoryIcon } from '../../engine/categoryIcons';
 import { CategoryIcon } from '../shared/icons/CategoryIcon';
 import { GoalReadout } from '../shared/GoalReadout';
 import { useDataStore } from '../../store/data';
+import { useMenuStore } from '../../store/menu';
 import { navigate } from '../../router/useHashRoute';
 import { formatDayMonth, formatMonthLabel, shiftMonth, todayIso } from '../../utils/dates';
 import { newId } from '../../utils/id';
@@ -79,6 +80,18 @@ export function MonthView() {
   useEffect(() => {
     void loadMonth(viewedMonth);
   }, [viewedMonth, loadMonth]);
+
+  // Contribute the screen's quick actions to the floating ⋯ menu.
+  const setActions = useMenuStore((s) => s.setActions);
+  const clearActions = useMenuStore((s) => s.clearActions);
+  useEffect(() => {
+    setActions([
+      { id: 'import', label: 'Import statement', run: () => navigate('/import') },
+      { id: 'add-cash', label: 'Add cash expense', run: () => navigate('/add') },
+      { id: 'edit-budgets', label: 'Edit budgets', run: () => navigate('/budgets') },
+    ]);
+    return () => clearActions();
+  }, [setActions, clearActions]);
 
   /** Switch to a specific month, dropping the previous month's transient view state. */
   function selectMonth(key: string) {
@@ -638,21 +651,6 @@ export function MonthView() {
       {goalTarget !== undefined && summary.incomeHalere > 0 && (
         <GoalReadout leftoverHalere={summary.leftoverHalere} targetHalere={goalTarget} />
       )}
-
-      <div className={styles.actionsRow}>
-        <button type="button" className={styles.secondaryBtn} onClick={() => navigate('/import')}>
-          Import statement
-        </button>
-        <button type="button" className={styles.primaryBtn} onClick={() => navigate('/add')}>
-          + Add cash
-        </button>
-      </div>
-
-      <div className={styles.actionsRow}>
-        <button type="button" className={styles.secondaryBtn} onClick={() => navigate('/budgets')}>
-          Edit budgets
-        </button>
-      </div>
 
       {!loaded && transactions.length === 0 && <p className={styles.muted}>Loading…</p>}
 

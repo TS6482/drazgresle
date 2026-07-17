@@ -1,7 +1,8 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { computeNetWorth, computeSeries } from '../../engine/networth';
 import { formatKc } from '../../engine/money';
 import { useDataStore } from '../../store/data';
+import { useMenuStore } from '../../store/menu';
 import { SnapshotForm } from './SnapshotForm';
 import styles from './NetWorth.module.css';
 
@@ -19,6 +20,15 @@ export function NetWorth() {
   const loading = useDataStore((s) => s.loading);
 
   const [mode, setMode] = useState<Mode>({ kind: 'list' });
+
+  // Contribute the screen's "Add snapshot" action to the floating ⋯ menu.
+  // Registered before the early returns below so this hook stays unconditional.
+  const setActions = useMenuStore((s) => s.setActions);
+  const clearActions = useMenuStore((s) => s.clearActions);
+  useEffect(() => {
+    setActions([{ id: 'add-snapshot', label: 'Add snapshot', run: () => setMode({ kind: 'new' }) }]);
+    return () => clearActions();
+  }, [setActions, clearActions]);
 
   const series = useMemo(() => computeSeries(accounts, snapshots), [accounts, snapshots]);
 
@@ -57,9 +67,6 @@ export function NetWorth() {
     <section className={styles.screen}>
       <div className={styles.topBar}>
         <h1 className={styles.heading}>Net worth</h1>
-        <button type="button" className={styles.addButton} onClick={() => setMode({ kind: 'new' })}>
-          + Snapshot
-        </button>
       </div>
 
       {loading && snapshots.length === 0 && <p className={styles.muted}>Loading…</p>}

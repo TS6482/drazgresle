@@ -77,24 +77,7 @@
   border-radius: var(--radius);
 }
 
-/* Action buttons — iOS filled vs tinted. */
-.actionsRow {
-  display: flex;
-  gap: var(--space-3);
-}
-
-.primaryBtn {
-  flex: 1;
-  min-height: 48px;
-  border-radius: var(--radius);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  border: none;
-  font-size: var(--text-base);
-  font-weight: 600;
-  cursor: pointer;
-}
-
+/* iOS tinted action button — used by the auto-classify and show-all controls. */
 .secondaryBtn {
   flex: 1;
   min-height: 48px;

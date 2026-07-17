@@ -8,6 +8,7 @@ import { formatKc } from '../../engine/money';
 import { formatPercent } from '../../engine/percent';
 import { GoalReadout } from '../shared/GoalReadout';
 import { useDataStore } from '../../store/data';
+import { useMenuStore } from '../../store/menu';
 import { navigate } from '../../router/useHashRoute';
 import { daysBetween, formatDayMonth, formatMonthLabel, todayIso } from '../../utils/dates';
 import styles from './Home.module.css';
@@ -55,6 +56,17 @@ export function Home() {
       void loadMonth(mk);
     }
   }, [yearMonths, loadMonth]);
+
+  // Contribute the screen's quick actions to the floating ⋯ menu.
+  const setActions = useMenuStore((s) => s.setActions);
+  const clearActions = useMenuStore((s) => s.clearActions);
+  useEffect(() => {
+    setActions([
+      { id: 'import', label: 'Import statement', run: () => navigate('/import') },
+      { id: 'add-cash', label: 'Add cash expense', run: () => navigate('/add') },
+    ]);
+    return () => clearActions();
+  }, [setActions, clearActions]);
 
   const cashFlow = useMemo(
     () => cashFlowForYear(months, categories, budgets, defaultMonthKey),
@@ -135,13 +147,6 @@ export function Home() {
 
   return (
     <section className={styles.home}>
-      <button type="button" className={styles.addButton} onClick={() => navigate('/add')}>
-        + Add cash expense
-      </button>
-      <button type="button" className={styles.importButton} onClick={() => navigate('/import')}>
-        Import statement
-      </button>
-
       <div className={styles.card}>
         <div className={styles.cardTop}>
           <span className={styles.cardLabel}>{formatMonthLabel(defaultMonthKey)}</span>
