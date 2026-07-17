@@ -4,6 +4,12 @@
   gap: var(--space-4);
 }
 
+/* Page title — matches Net worth / Accounts. */
+.heading {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+
 /* Reserve the cash-flow chart's height while its lazy chunk loads, so the page
    doesn't jump (matches CashFlowChart's card: title + 180px plot + legend +
    padding + its own bottom margin). */

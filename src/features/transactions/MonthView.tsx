@@ -644,6 +644,8 @@ export function MonthView() {
 
   return (
     <section className={styles.screen}>
+      <h1 className={styles.heading}>Month Overview</h1>
+
       <Suspense fallback={<div className={styles.meterPlaceholder} />}>
         <MonthMeter summary={summary} categories={categories} monthPicker={monthPicker} />
       </Suspense>

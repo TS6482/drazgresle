@@ -147,6 +147,8 @@ export function Home() {
 
   return (
     <section className={styles.home}>
+      <h1 className={styles.heading}>Dražgrešle</h1>
+
       <div className={styles.card}>
         <div className={styles.cardTop}>
           <span className={styles.cardLabel}>{formatMonthLabel(defaultMonthKey)}</span>

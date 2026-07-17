@@ -7,6 +7,12 @@
   gap: var(--space-5);
 }
 
+/* Page title — matches Net worth / Accounts. */
+.heading {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+
 /* Month picker: sits inside the gauge arch (below the leftover figure). A visible
    tinted label with an iOS up/down chevron shows the current month; a transparent
    native <select> laid over it drives selection (native wheel on a phone). The
