@@ -187,89 +187,93 @@ export function Settings() {
     <section className={styles.screen}>
       <h1 className={styles.heading}>Settings</h1>
 
-      <div className={styles.card}>
-        <h2 className={styles.cardHeading}>People</h2>
+      <section className={styles.group}>
+        <h2 className={styles.groupHeading}>People</h2>
         <p className={styles.muted}>
           Salaries and bonus feed the projections coming in a later phase.
         </p>
-        {people.map((p) => (
-          <fieldset key={p.id} className={styles.fieldset}>
-            <legend className={styles.legend}>Person {p.id}</legend>
-            <div className={forms.field}>
-              <label className={forms.label} htmlFor={`name-${p.id}`}>
-                Name
-              </label>
-              <input
-                id={`name-${p.id}`}
-                className={forms.input}
-                type="text"
-                autoComplete="off"
-                value={p.name}
-                onChange={(e) => updatePerson(p.id, { name: e.target.value })}
-                placeholder={`Person ${p.id}`}
+        <div className={styles.card}>
+          {people.map((p) => (
+            <fieldset key={p.id} className={styles.fieldset}>
+              <legend className={styles.legend}>Person {p.id}</legend>
+              <div className={forms.field}>
+                <label className={forms.label} htmlFor={`name-${p.id}`}>
+                  Name
+                </label>
+                <input
+                  id={`name-${p.id}`}
+                  className={forms.input}
+                  type="text"
+                  autoComplete="off"
+                  value={p.name}
+                  onChange={(e) => updatePerson(p.id, { name: e.target.value })}
+                  placeholder={`Person ${p.id}`}
+                />
+              </div>
+              <MoneyInput
+                id={`salary-${p.id}`}
+                label="Gross monthly salary"
+                value={p.salary}
+                onChange={(v) => updatePerson(p.id, { salary: v })}
+                allowEmpty
               />
-            </div>
-            <MoneyInput
-              id={`salary-${p.id}`}
-              label="Gross monthly salary"
-              value={p.salary}
-              onChange={(v) => updatePerson(p.id, { salary: v })}
-              allowEmpty
-            />
-            <div className={forms.field}>
-              <label className={forms.label} htmlFor={`bonus-${p.id}`}>
-                Annual bonus (%)
-              </label>
-              <input
-                id={`bonus-${p.id}`}
-                className={forms.input}
-                type="text"
-                inputMode="decimal"
-                autoComplete="off"
-                value={p.bonus}
-                onChange={(e) => updatePerson(p.id, { bonus: e.target.value })}
-                aria-invalid={p.bonus.trim() !== '' && parsePercentInput(p.bonus) === null}
-                placeholder="e.g. 8,5"
-              />
-            </div>
-          </fieldset>
-        ))}
-        <div className={forms.actions}>
+              <div className={forms.field}>
+                <label className={forms.label} htmlFor={`bonus-${p.id}`}>
+                  Annual bonus (%)
+                </label>
+                <input
+                  id={`bonus-${p.id}`}
+                  className={forms.input}
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={p.bonus}
+                  onChange={(e) => updatePerson(p.id, { bonus: e.target.value })}
+                  aria-invalid={p.bonus.trim() !== '' && parsePercentInput(p.bonus) === null}
+                  placeholder="e.g. 8,5"
+                />
+              </div>
+            </fieldset>
+          ))}
+        </div>
+        <div className={styles.actions}>
           <button
             type="button"
-            className={forms.primary}
+            className={styles.primaryBtn}
             onClick={() => void savePeople()}
             disabled={saving || !peopleValid}
           >
             {saving ? 'Saving…' : 'Save people'}
           </button>
         </div>
-      </div>
+      </section>
 
-      <div className={styles.card}>
-        <h2 className={styles.cardHeading}>Monthly goal</h2>
-        <MoneyInput
-          id="goal-leftover"
-          label="Leave at least this much at month-end"
-          hint="Compared to what's left after spending and saving."
-          value={goalDraft}
-          onChange={setGoalDraft}
-          allowEmpty
-        />
-        <div className={forms.actions}>
+      <section className={styles.group}>
+        <h2 className={styles.groupHeading}>Monthly goal</h2>
+        <div className={styles.card}>
+          <MoneyInput
+            id="goal-leftover"
+            label="Leave at least this much at month-end"
+            hint="Compared to what's left after spending and saving."
+            value={goalDraft}
+            onChange={setGoalDraft}
+            allowEmpty
+          />
+        </div>
+        <div className={styles.actions}>
           <button
             type="button"
-            className={forms.primary}
+            className={styles.primaryBtn}
             onClick={() => void saveGoal()}
             disabled={saving || !goalValid}
           >
             {saving ? 'Saving…' : 'Save goal'}
           </button>
         </div>
-      </div>
+      </section>
 
-      <div className={styles.card}>
-        <h2 className={styles.cardHeading}>Categories</h2>
+      <section className={styles.group}>
+        <h2 className={styles.groupHeading}>Categories</h2>
         <p className={styles.muted}>
           Categories are never deleted (transactions reference them) — deactivate to hide from
           pickers.
@@ -378,7 +382,7 @@ export function Settings() {
           })}
         </ul>
 
-        <fieldset className={styles.fieldset}>
+        <fieldset className={styles.addCard}>
           <legend className={styles.legend}>Add a category</legend>
           <div className={styles.addRow}>
             <input
@@ -412,27 +416,29 @@ export function Settings() {
           </div>
         </fieldset>
 
-        <div className={forms.actions}>
+        <div className={styles.actions}>
           <button
             type="button"
-            className={forms.primary}
+            className={styles.primaryBtn}
             onClick={() => void saveCategoryDrafts()}
             disabled={saving}
           >
             {saving ? 'Saving…' : 'Save categories'}
           </button>
         </div>
-      </div>
+      </section>
 
-      <div className={styles.card}>
-        <h2 className={styles.cardHeading}>Connection</h2>
-        <p className={styles.muted}>Connected as {username}</p>
-        <div className={forms.actions}>
+      <section className={styles.group}>
+        <h2 className={styles.groupHeading}>Connection</h2>
+        <div className={styles.card}>
+          <p className={styles.muted}>Connected as {username}</p>
+        </div>
+        <div className={styles.actions}>
           <button type="button" className={styles.disconnect} onClick={handleDisconnect}>
             Disconnect
           </button>
         </div>
-      </div>
+      </section>
     </section>
   );
 }
