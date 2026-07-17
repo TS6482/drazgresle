@@ -7,42 +7,49 @@
   gap: var(--space-5);
 }
 
-/* Month picker: a native <select> styled as a compact, centred tinted control
-   that sits inside the gauge arch (below the leftover figure). appearance:none
-   drops the platform chrome; the wrapper draws a small ▾. It restores
-   pointer-events (the gauge's centre overlay disables them) so it stays tappable. */
+/* Month picker: sits inside the gauge arch (below the leftover figure). A visible
+   tinted label with an iOS up/down chevron shows the current month; a transparent
+   native <select> laid over it drives selection (native wheel on a phone). The
+   overlay keeps the chevron hugging the month name at any label width — a native
+   select alone would size to its widest option and strand the caret far right.
+   pointer-events is restored here (the gauge's centre overlay disables them). */
 .monthPicker {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 44px;
   pointer-events: auto;
 }
 
-.monthPicker::after {
-  content: '▾';
-  position: absolute;
-  right: var(--space-2);
+.monthLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 600;
   color: var(--color-primary);
-  font-size: var(--text-sm);
-  pointer-events: none;
+}
+
+/* The two chevrons point away from each other (up over down), like the iOS
+   picker indicator; sized relative to the label text. */
+.monthChevron {
+  width: 0.7em;
+  height: 0.9em;
+  flex-shrink: 0;
 }
 
 .monthSelect {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
   -webkit-appearance: none;
   appearance: none;
-  min-height: 44px;
-  /* Right padding leaves room for the ▾ so it never overlaps the label. */
-  padding: 0 calc(var(--space-4) + var(--space-2)) 0 var(--space-3);
-  text-align: center;
-  text-align-last: center;
-  font: inherit;
-  font-weight: 600;
-  color: var(--color-primary);
-  background: transparent;
   border: none;
+  background: transparent;
   cursor: pointer;
-  /* No grey tap flash or focus ring on touch/mouse. */
+  /* No grey tap flash on touch. */
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -50,8 +57,8 @@
   outline: none;
 }
 
-/* Keep a visible ring for keyboard users only (not on tap). */
-.monthSelect:focus-visible {
+/* Keep a visible ring for keyboard users only (not on tap): ring the label. */
+.monthPicker:has(.monthSelect:focus-visible) {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
   border-radius: var(--radius-sm);

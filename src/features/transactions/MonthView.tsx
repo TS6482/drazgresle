@@ -91,17 +91,24 @@ export function MonthView() {
     setViewedMonth(key);
   }
 
-  // Months the picker offers: the first imported month through the current
-  // calendar month, newest first. viewedMonth is always included so the select
-  // never shows a phantom value if it somehow falls outside that range.
-  const monthOptions = useMemo(() => {
+  // Months the picker offers, split into the three iOS-style sections it groups
+  // under: the one upcoming month, the current calendar month, and every earlier
+  // month back to the first imported one (newest first). viewedMonth is always
+  // included so the select never shows a phantom value if it falls outside range.
+  const monthGroups = useMemo(() => {
     const current = todayIso().slice(0, 7);
+    const upcoming = shiftMonth(current, 1);
     const keys = new Set<string>();
-    for (let k = FIRST_MONTH, i = 0; k <= current && i < 600; k = shiftMonth(k, 1), i++) {
+    for (let k = FIRST_MONTH, i = 0; k <= upcoming && i < 600; k = shiftMonth(k, 1), i++) {
       keys.add(k);
     }
     keys.add(viewedMonth);
-    return [...keys].sort((a, b) => b.localeCompare(a));
+    const sorted = [...keys].sort((a, b) => b.localeCompare(a));
+    return {
+      upcoming: sorted.filter((k) => k > current),
+      current: sorted.filter((k) => k === current),
+      previous: sorted.filter((k) => k < current),
+    };
   }, [viewedMonth]);
 
   function toggleCategory(categoryId: string) {
@@ -567,17 +574,57 @@ export function MonthView() {
 
   const monthPicker = (
     <span className={styles.monthPicker}>
+      {/* Visible label + iOS up/down chevron, mirroring the select's value so the
+          chevron always hugs the month name. The transparent native select on top
+          drives selection (and opens the platform wheel on a phone). */}
+      <span className={styles.monthLabel} aria-hidden="true">
+        {formatMonthLabel(viewedMonth)}
+        <svg
+          className={styles.monthChevron}
+          viewBox="0 0 12 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M3 8l3-3 3 3" />
+          <path d="M3 12l3 3 3-3" />
+        </svg>
+      </span>
       <select
         className={styles.monthSelect}
         value={viewedMonth}
         onChange={(e) => selectMonth(e.target.value)}
         aria-label="Month"
       >
-        {monthOptions.map((key) => (
-          <option key={key} value={key}>
-            {formatMonthLabel(key)}
-          </option>
-        ))}
+        {monthGroups.upcoming.length > 0 && (
+          <optgroup label="Upcoming Month">
+            {monthGroups.upcoming.map((key) => (
+              <option key={key} value={key}>
+                {formatMonthLabel(key)}
+              </option>
+            ))}
+          </optgroup>
+        )}
+        {monthGroups.current.length > 0 && (
+          <optgroup label="Current Month">
+            {monthGroups.current.map((key) => (
+              <option key={key} value={key}>
+                {formatMonthLabel(key)}
+              </option>
+            ))}
+          </optgroup>
+        )}
+        {monthGroups.previous.length > 0 && (
+          <optgroup label="Previous Months">
+            {monthGroups.previous.map((key) => (
+              <option key={key} value={key}>
+                {formatMonthLabel(key)}
+              </option>
+            ))}
+          </optgroup>
+        )}
       </select>
     </span>
   );
