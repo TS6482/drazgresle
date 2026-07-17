@@ -326,18 +326,20 @@ export function Settings() {
                         </option>
                       ))}
                     </select>
-                    {reserved ? (
-                      <span className={styles.reserved}>Reserved</span>
-                    ) : (
-                      <button
-                        type="button"
-                        className={styles.toggleBtn}
-                        onClick={() => toggleActive(cat.id)}
-                      >
-                        {inactive ? 'Reactivate' : 'Deactivate'}
-                      </button>
-                    )}
                   </div>
+                  {reserved ? (
+                    <span className={styles.reserved}>Reserved</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className={`${styles.catToggle} ${inactive ? styles.catToggleRestore : ''}`}
+                      onClick={() => toggleActive(cat.id)}
+                      aria-label={`${inactive ? 'Reactivate' : 'Deactivate'} ${cat.name || 'category'}`}
+                      title={inactive ? 'Reactivate' : 'Deactivate'}
+                    >
+                      {inactive ? '↺' : '×'}
+                    </button>
+                  )}
                 </div>
                 {pickerOpen && (
                   <div className={styles.iconPicker}>

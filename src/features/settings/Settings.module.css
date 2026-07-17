@@ -124,7 +124,7 @@
   flex: 1;
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   gap: var(--space-2);
   align-items: center;
 }
@@ -200,6 +200,7 @@
 }
 
 /* iOS tinted secondary button — inline row actions (deactivate / add). */
+/* Tinted "+ Add category" button in the add-a-category card. */
 .toggleBtn {
   min-height: 44px;
   padding: 0 var(--space-3);
@@ -213,6 +214,30 @@
 }
 
 .toggleBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Compact deactivate/reactivate control — an icon button like the family-loan
+   plan's remove button, so the category row stays uncluttered. */
+.catToggle {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-danger);
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Reactivate variant reads as a neutral restore, not a destructive ×. */
+.catToggleRestore {
+  color: var(--color-primary);
+}
+
+.catToggle:disabled {
   opacity: 0.5;
   cursor: default;
 }
