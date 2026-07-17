@@ -98,6 +98,11 @@ Statuses: `[ ]` todo · `[~]` in progress · `[x]` done.
       the account rule on commit). Transfers card removed from Month view. Data migrated
       (37 rows, 4 rules retargeted, 1 duplicate rule dropped; 2 misfiled rows left
       unclassified for the user). 177 tests.
+- [x] Header removed (user request 2026-07-17): app chrome is now a floating frosted ⋯
+      circle top-right (hidden on Settings) that opens Settings; username + Disconnect
+      moved into a "Connection" section at the bottom of Settings; content and the
+      read-only/error banners take over the safe-area inset handling. Budget-vs-actual
+      figures on the Month view shrunk to text-sm so they stop crowding category names.
 - [x] Month view (`#/month`): income/spent/net summary, budget bars with over-by warnings,
       transaction list with inline category edit; category management + salaries in Settings;
       new "this month's money" home; 4-tab navigation. *(Phase 2a.)*

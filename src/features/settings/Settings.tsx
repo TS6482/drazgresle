@@ -6,6 +6,7 @@ import { isExpenseGroup, TRANSFER_CATEGORY_ID } from '../../engine/summarize';
 import { SPENDING_AREAS } from '../../engine/areas';
 import { resolveCategoryIcon } from '../../engine/categoryIcons';
 import { useDataStore } from '../../store/data';
+import { useSessionStore } from '../../store/session';
 import { newId } from '../../utils/id';
 import { CATEGORY_GROUP_LABELS, normalizeCategoryGroup } from '../shared/labels';
 import { MoneyInput } from '../shared/MoneyInput';
@@ -59,6 +60,9 @@ export function Settings() {
   const saveGoals = useDataStore((s) => s.saveGoals);
   const saveCategories = useDataStore((s) => s.saveCategories);
   const saving = useDataStore((s) => s.saving);
+  const reset = useDataStore((s) => s.reset);
+  const username = useSessionStore((s) => s.username);
+  const disconnect = useSessionStore((s) => s.disconnect);
 
   const [people, setPeople] = useState<PersonDraft[]>(() => buildPeople(storePersons));
   const [drafts, setDrafts] = useState<Category[]>(() => categories.map((c) => ({ ...c })));
@@ -164,6 +168,12 @@ export function Settings() {
       .filter((c) => c.name.trim() !== '')
       .map((c) => ({ ...c, name: c.name.trim() }));
     await saveCategories(cleaned);
+  }
+
+  /** Forget the loaded data, then the token — same order the old header used. */
+  function handleDisconnect() {
+    reset();
+    disconnect();
   }
 
   const peopleValid = people.every(
@@ -426,6 +436,16 @@ export function Settings() {
             disabled={saving}
           >
             {saving ? 'Saving…' : 'Save categories'}
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.card}>
+        <h2 className={styles.cardHeading}>Connection</h2>
+        <p className={styles.muted}>Connected as {username}</p>
+        <div className={forms.actions}>
+          <button type="button" className={styles.disconnect} onClick={handleDisconnect}>
+            Disconnect
           </button>
         </div>
       </div>

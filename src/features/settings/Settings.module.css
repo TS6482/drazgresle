@@ -209,6 +209,19 @@
   white-space: nowrap;
 }
 
+/* iOS tinted danger button: red text on a faint red fill, full-width in its row. */
+.disconnect {
+  flex: 1;
+  min-height: 44px;
+  border: none;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  color: var(--color-danger);
+  font-size: var(--text-base);
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /* On narrow phones let the category rows stack so controls never overlap. */
 @media (max-width: 480px) {
   .catMain,

@@ -3,6 +3,8 @@
   border-bottom: 1px solid var(--color-warning-border);
   color: var(--color-warning-text);
   padding: var(--space-3) var(--space-4);
+  /* Sits at the very top of the viewport now — keep text below the status bar. */
+  padding-top: calc(var(--space-3) + env(safe-area-inset-top, 0px));
   font-size: var(--text-sm);
   text-align: center;
 }

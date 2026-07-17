@@ -35,12 +35,9 @@ export function App() {
 
 function ConnectedApp() {
   const route = useHashRoute();
-  const username = useSessionStore((s) => s.username);
-  const disconnect = useSessionStore((s) => s.disconnect);
   const readOnly = useSessionStore((s) => s.readOnly);
 
   const load = useDataStore((s) => s.load);
-  const reset = useDataStore((s) => s.reset);
   const error = useDataStore((s) => s.error);
 
   // Load the data-repo files once the session is connected.
@@ -48,30 +45,19 @@ function ConnectedApp() {
     void load();
   }, [load]);
 
-  function handleDisconnect() {
-    reset();
-    disconnect();
-  }
-
   return (
     <div className={shell.app}>
-      <header className={shell.header}>
-        <span className={shell.brand}>Dražgrešle</span>
-        <div className={shell.headerRight}>
-          {username && <span className={shell.user}>{username}</span>}
-          <button
-            className={shell.iconButton}
-            type="button"
-            aria-label="Settings"
-            onClick={() => navigate('/settings')}
-          >
-            ⚙
-          </button>
-          <button className={shell.linkButton} type="button" onClick={handleDisconnect}>
-            Disconnect
-          </button>
-        </div>
-      </header>
+      {/* Floating "more" button → Settings. Hidden on Settings itself (no-op there). */}
+      {route !== '/settings' && (
+        <button
+          className={shell.moreButton}
+          type="button"
+          aria-label="Settings"
+          onClick={() => navigate('/settings')}
+        >
+          ⋯
+        </button>
+      )}
       {readOnly && <ReadOnlyBanner />}
       {error && (
         <div className={shell.dataError} role="alert">
