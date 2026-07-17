@@ -7,6 +7,8 @@ sessionStorage only, never committed). Every save is a git commit = free version
 
 Full design: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · Phased plan & status:
 [docs/ROADMAP.md](docs/ROADMAP.md) — **keep ROADMAP.md current as work progresses.**
+Retrospective lessons: [docs/lessons.md](docs/lessons.md) — **read it before planning any
+phase or feature, and add new dated lessons there when incidents or reworks happen.**
 
 ## The user
 
