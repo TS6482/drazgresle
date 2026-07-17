@@ -99,43 +99,6 @@
   border-radius: var(--radius);
 }
 
-.swatchRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-}
-
-/* ≥44px tap target around a 28px colour dot. */
-.swatchBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-}
-
-.swatchDot {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  border: 2px solid transparent;
-  background-color: var(--tile-light);
-}
-
-.swatchBtn[data-selected='true'] .swatchDot {
-  border-color: var(--color-text);
-}
-
-@media (prefers-color-scheme: dark) {
-  .swatchDot {
-    background-color: var(--tile-dark);
-  }
-}
-
 .glyphGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));

@@ -1,10 +1,14 @@
 // Resolves the icon + colour to show for a category. Pure — no React, no I/O.
-// Resolution order for each of icon and colour: the value stored on the category
-// wins, then the built-in default for its (seeded) id, then a generic fallback.
-// Ids are plain strings here (ICON_LIBRARY / ICON_COLORS ids) so the engine stays
-// decoupled from the UI glyph/colour modules.
+// The GLYPH resolves by stored value → seeded id-default → generic fallback. The
+// COLOUR now mirrors the spending gauge: expense categories take their spending
+// area's colour and savings the neutral "saved" colour, so an icon reads the same
+// hue as its arc segment. Income (no gauge segment) and other groups keep the old
+// stored/default colour. Ids are plain strings (ICON_LIBRARY / ICON_COLORS ids)
+// so the engine stays decoupled from the UI glyph/colour modules.
 
 import type { Category } from '../types/data';
+import { areaOf } from './areas';
+import { isExpenseGroup, isSavingsGroup } from './summarize';
 
 /** An icon reference: an ICON_LIBRARY id and an ICON_COLORS id. */
 export interface CategoryIconRef {
@@ -44,14 +48,30 @@ const DEFAULT_BY_ID: Record<string, CategoryIconRef> = {
 };
 
 /**
- * The icon + colour to render for a category. Icon and colour resolve
- * independently: a stored value wins for that field, else the id-default, else
- * the generic tag/gray fallback.
+ * The colour id for a category. Savings → the neutral "saved" area colour;
+ * expense → its spending area's colour (`area-<area>`); everything else (income,
+ * transfer, unknown) keeps the legacy stored/default colour, since the gauge has
+ * no segment for them.
+ */
+function resolveColorId(category: Category, def: CategoryIconRef | undefined): string {
+  if (isSavingsGroup(category.group)) {
+    return 'area-saved';
+  }
+  if (isExpenseGroup(category.group)) {
+    return `area-${areaOf(category)}`;
+  }
+  return category.color ?? def?.colorId ?? FALLBACK_ICON.colorId;
+}
+
+/**
+ * The icon + colour to render for a category. The glyph resolves from the stored
+ * value, else the id-default, else the generic tag fallback; the colour is
+ * derived from the category's group/area (see `resolveColorId`).
  */
 export function resolveCategoryIcon(category: Category): CategoryIconRef {
   const def = DEFAULT_BY_ID[category.id];
   return {
     iconId: category.icon ?? def?.iconId ?? FALLBACK_ICON.iconId,
-    colorId: category.color ?? def?.colorId ?? FALLBACK_ICON.colorId,
+    colorId: resolveColorId(category, def),
   };
 }

@@ -29,7 +29,25 @@ export const ICON_COLORS: IconColor[] = [
   { id: 'brown', name: 'Brown', hex: '#a2845e', hexDark: '#ac8e68' },
 ];
 
-const COLOR_BY_ID = new Map<string, IconColor>(ICON_COLORS.map((c) => [c.id, c]));
+/**
+ * Spending-area tile colours. Their fills are the theme-aware `--area-*` CSS vars
+ * (defined in styles/tokens.css), so a category icon paints in its gauge colour
+ * and switches with the theme automatically — both the light and dark tile values
+ * point at the same var, which itself resolves per theme. Not user-pickable:
+ * engine/categoryIcons.ts assigns these from a category's group/area.
+ */
+export const AREA_TILE_COLORS: IconColor[] = [
+  { id: 'area-essential', name: 'Essential Living', hex: 'var(--area-essential)', hexDark: 'var(--area-essential)' },
+  { id: 'area-food', name: 'Food', hex: 'var(--area-food)', hexDark: 'var(--area-food)' },
+  { id: 'area-entertainment', name: 'Entertainment', hex: 'var(--area-entertainment)', hexDark: 'var(--area-entertainment)' },
+  { id: 'area-kids', name: 'Kids', hex: 'var(--area-kids)', hexDark: 'var(--area-kids)' },
+  { id: 'area-others', name: 'Others', hex: 'var(--area-others)', hexDark: 'var(--area-others)' },
+  { id: 'area-saved', name: 'Saved', hex: 'var(--area-saved)', hexDark: 'var(--area-saved)' },
+];
+
+const COLOR_BY_ID = new Map<string, IconColor>(
+  [...ICON_COLORS, ...AREA_TILE_COLORS].map((c) => [c.id, c]),
+);
 
 /** Generic fallback tile colour for an unknown id (systemGray). */
 const FALLBACK_COLOR: IconColor = COLOR_BY_ID.get('gray') ?? ICON_COLORS[0];

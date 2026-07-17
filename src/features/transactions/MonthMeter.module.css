@@ -1,14 +1,8 @@
 /* Spending "barometer": an arched half-donut gauge whose full arc is the month's
-   income, filled with a segment per spending area. Area colours are theme-aware
-   (light + dark), echoing the validated palette used across the app. */
+   income, filled with a segment per spending area. Segment colours are the shared
+   theme-aware --area-* tokens (styles/tokens.css) — the same colours category
+   icons use. */
 .meter {
-  --area-essential: #2a78d6;
-  --area-food: #1baf7a;
-  --area-entertainment: #eda100;
-  --area-kids: #4a3aa7;
-  --area-others: #e34948;
-  --area-saved: #8e8e93; /* neutral systemGray — money put away, not spent */
-
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -17,26 +11,16 @@
   border-radius: var(--radius);
 }
 
-@media (prefers-color-scheme: dark) {
-  .meter {
-    --area-essential: #3987e5;
-    --area-food: #199e70;
-    --area-entertainment: #c98500;
-    --area-kids: #9085e9;
-    --area-others: #e66767;
-    --area-saved: #98989e; /* neutral systemGray (dark) */
-  }
-}
-
 /* The arched gauge. The half-donut sits in the top of this box (its centre is at
-   the bottom edge); the "Left" figure is overlaid under the arch. */
+   the bottom edge); the leftover figure is overlaid under the arch. */
 .gauge {
   position: relative;
   width: 100%;
 }
 
-/* "Left" figure, centred under the arch (near the bottom of the gauge box).
-   pointer-events:none so it never blocks the arc's hover/tap. */
+/* Leftover figure + month picker, stacked and centred near the bottom of the
+   gauge box (inside the arch). pointer-events:none so the overlay never blocks
+   the arc's hover/tap — the picker re-enables them on itself. */
 .center {
   position: absolute;
   inset: 0;
@@ -44,117 +28,83 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
+  gap: var(--space-1);
   padding-bottom: var(--space-1);
   pointer-events: none;
 }
 
-.leftLabel {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
+/* The sole figure inside the arch — the month's true leftover. */
 .leftValue {
-  font-size: var(--text-lg);
-  font-weight: 600;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  line-height: 1.1;
   font-variant-numeric: tabular-nums;
   color: var(--color-text);
 }
 
-/* Negative "Left" (overspent) reads as a warning. */
+/* Negative leftover (overspent) reads as a warning. */
 .negative {
   color: var(--color-danger);
 }
 
-.overNote {
-  margin: 0;
-  text-align: center;
-  font-size: var(--text-sm);
-  color: var(--color-danger);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Detail line beside/below the bar — the hovered/tapped area's readout. */
-.detail {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  min-height: var(--text-lg);
-}
-
-.detailSwatch {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-
-.detailName {
-  font-weight: 600;
-}
-
-.detailValue {
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text);
-}
-
-.detailPct {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
-.detailHint {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
-/* Muted savings-rate readout under the detail line — same weight as .detailHint. */
+/* Muted savings-rate readout under the arch. */
 .savingsRate {
   margin: 0;
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
-/* Legend: swatch + name per drawn area. Each a ≥44px tap target so narrow
-   segments are still reachable on a phone. */
-.legend {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-2);
+/* Floating readout for the hovered/tapped arc segment: a small surface card. The
+   amount leads (strong ink); the segment name and its share of income follow. */
+.tooltip {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  font-size: var(--text-sm);
 }
 
-.legendItem {
+.tooltipHead {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: 44px;
-  padding: 0 var(--space-2);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  cursor: pointer;
 }
 
-.legendItemOn {
-  color: var(--color-text);
-  border-color: var(--color-border);
-  background: var(--color-surface);
-}
-
-.legendSwatch {
+/* A short line key in the segment's colour (not a filled box). */
+.tooltipKey {
   width: 12px;
-  height: 12px;
-  border-radius: 3px;
+  height: 2px;
+  border-radius: 999px;
   flex-shrink: 0;
 }
 
+.tooltipName {
+  color: var(--color-text-muted);
+}
+
+/* The amount leads: strongest ink, tabular. */
+.tooltipValue {
+  margin-top: 2px;
+  font-size: var(--text-base);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.tooltipPct {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Centres the month picker on a no-income month (no arch to overlay it on). */
+.emptyPicker {
+  display: flex;
+  justify-content: center;
+}
+
 .note {
-  margin: var(--space-2) 0 0;
+  margin: 0;
   padding: var(--space-3);
   background: var(--color-surface-alt);
   border-radius: var(--radius);

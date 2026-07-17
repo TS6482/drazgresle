@@ -21,6 +21,15 @@
   --color-warning-border: #ffcc00; /* systemYellow */
   --color-warning-text: #7a5c00;
 
+  /* Spending-area colours — the gauge segments AND every category icon tile
+     (see engine/categoryIcons.ts). Theme-aware; dark overrides below. */
+  --area-essential: #2a78d6;
+  --area-food: #1baf7a;
+  --area-entertainment: #eda100;
+  --area-kids: #4a3aa7;
+  --area-others: #e34948;
+  --area-saved: #8e8e93; /* neutral systemGray — money put away, not spent */
+
   /* Spacing scale */
   --space-1: 4px;
   --space-2: 8px;
@@ -64,6 +73,13 @@
     --color-warning-bg: #3a2f0b;
     --color-warning-border: #6b5300;
     --color-warning-text: #ffd60a;
+
+    --area-essential: #3987e5;
+    --area-food: #199e70;
+    --area-entertainment: #c98500;
+    --area-kids: #9085e9;
+    --area-others: #e66767;
+    --area-saved: #98989e; /* neutral systemGray (dark) */
   }
 }
 

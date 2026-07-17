@@ -1,5 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import type { TouchEvent } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type { Category, Rule, RuleField, Transaction } from '../../types/data';
 import { isExpenseGroup, isSavingsGroup, summarizeMonth } from '../../engine/summarize';
 import {
@@ -10,25 +9,24 @@ import {
   suggestRuleForStored,
 } from '../../engine/classify';
 import { formatKc } from '../../engine/money';
-import { cashFlowForYear } from '../../engine/cashflow';
-import { SPENDING_AREAS, areaColor, areaIcon, areaOf } from '../../engine/areas';
+import { SPENDING_AREAS, areaIcon, areaOf } from '../../engine/areas';
 import { resolveCategoryIcon } from '../../engine/categoryIcons';
 import { CategoryIcon } from '../shared/icons/CategoryIcon';
 import { GoalReadout } from '../shared/GoalReadout';
 import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
-import { formatDayMonth, formatMonthLabel, shiftMonth } from '../../utils/dates';
+import { formatDayMonth, formatMonthLabel, shiftMonth, todayIso } from '../../utils/dates';
 import { newId } from '../../utils/id';
 import { CategoryPicker } from '../shared/CategoryPicker';
 import styles from './MonthView.module.css';
 
-// Recharts is heavy; loading the two chart components on demand keeps it out of
-// the entry chunk (see docs/ARCHITECTURE.md — bundle split). Both keep named
-// exports (memoized), so we re-map to the default lazy() expects.
-const CashFlowChart = lazy(() =>
-  import('./CashFlowChart').then((m) => ({ default: m.CashFlowChart })),
-);
+// Recharts is heavy; loading the gauge on demand keeps it out of the entry chunk
+// (see docs/ARCHITECTURE.md — bundle split). It keeps a named (memoized) export,
+// so we re-map to the default lazy() expects.
 const MonthMeter = lazy(() => import('./MonthMeter').then((m) => ({ default: m.MonthMeter })));
+
+/** First month the picker offers — the first month with imported data. */
+const FIRST_MONTH = '2026-01';
 
 /** A staged category change awaiting confirmation, with its rule offer. */
 interface PendingChange {
@@ -77,77 +75,34 @@ export function MonthView() {
   // The full transaction list is collapsed by default; unclassified stay pinned.
   const [showAll, setShowAll] = useState(false);
 
-  // Months January..viewed of the viewed year — for the cash-flow chart.
-  const yearMonths = useMemo(() => {
-    const year = viewedMonth.slice(0, 4);
-    const upTo = Number(viewedMonth.slice(5, 7));
-    const list: string[] = [];
-    for (let m = 1; m <= upTo; m++) {
-      list.push(`${year}-${String(m).padStart(2, '0')}`);
-    }
-    return list;
-  }, [viewedMonth]);
-
+  // Load the viewed month's transactions (the store dedupes already-loaded months).
   useEffect(() => {
-    // Loading the viewed month plus every earlier month this year; the store
-    // dedupes already-loaded months, so this is cheap after the first pass.
-    for (const mk of yearMonths) {
-      void loadMonth(mk);
-    }
-  }, [yearMonths, loadMonth]);
+    void loadMonth(viewedMonth);
+  }, [viewedMonth, loadMonth]);
 
-  // Direction the incoming month should slide from. Null on first paint (no
-  // animation); set on every arrow/swipe change.
-  const [slideFrom, setSlideFrom] = useState<'left' | 'right' | null>(null);
-
-  /** Change months, dropping the previous month's transient view state. */
-  function goToMonth(delta: number) {
-    // New content enters from the direction of travel: next month → in from the
-    // right, previous month → in from the left.
-    setSlideFrom(delta > 0 ? 'right' : 'left');
+  /** Switch to a specific month, dropping the previous month's transient view state. */
+  function selectMonth(key: string) {
     setAutoResult(null);
     setOpenCategories({});
     setOpenAreas({});
     setShowAll(false);
     setPending(null);
     setNoteDraft(null);
-    setViewedMonth((m) => shiftMonth(m, delta));
+    setViewedMonth(key);
   }
 
-  // First-touch coordinates for swipe detection — a ref, not state, so tracking a
-  // drag never causes a re-render.
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-
-  function handleTouchStart(e: TouchEvent<HTMLElement>) {
-    // Ignore pinch/multi-touch gestures entirely.
-    if (e.touches.length > 1) {
-      touchStart.current = null;
-      return;
+  // Months the picker offers: the first imported month through the current
+  // calendar month, newest first. viewedMonth is always included so the select
+  // never shows a phantom value if it somehow falls outside that range.
+  const monthOptions = useMemo(() => {
+    const current = todayIso().slice(0, 7);
+    const keys = new Set<string>();
+    for (let k = FIRST_MONTH, i = 0; k <= current && i < 600; k = shiftMonth(k, 1), i++) {
+      keys.add(k);
     }
-    // Drags inside a form field are text-cursor moves, not page swipes.
-    if (e.target instanceof Element && e.target.closest('input, textarea, select')) {
-      touchStart.current = null;
-      return;
-    }
-    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  }
-
-  /** A clearly-horizontal swipe pages months like the arrows: left = next month
-   *  (turning the page forward), right = previous. Mostly-vertical drags are
-   *  scrolls and are ignored. */
-  function handleTouchEnd(e: TouchEvent<HTMLElement>) {
-    const start = touchStart.current;
-    touchStart.current = null;
-    if (!start) {
-      return;
-    }
-    const touch = e.changedTouches[0];
-    const dx = touch.clientX - start.x;
-    const dy = touch.clientY - start.y;
-    if (Math.abs(dx) > 60 && Math.abs(dx) > 1.8 * Math.abs(dy)) {
-      goToMonth(dx < 0 ? 1 : -1);
-    }
-  }
+    keys.add(viewedMonth);
+    return [...keys].sort((a, b) => b.localeCompare(a));
+  }, [viewedMonth]);
 
   function toggleCategory(categoryId: string) {
     setOpenCategories((prev) => ({ ...prev, [categoryId]: !(prev[categoryId] ?? false) }));
@@ -168,11 +123,6 @@ export function MonthView() {
   const summary = useMemo(
     () => summarizeMonth(transactions, categories, budgets, viewedMonth),
     [transactions, categories, budgets, viewedMonth],
-  );
-
-  const cashFlow = useMemo(
-    () => cashFlowForYear(months, categories, budgets, viewedMonth),
-    [months, categories, budgets, viewedMonth],
   );
 
   // Newest first for the transaction list.
@@ -615,45 +565,27 @@ export function MonthView() {
     );
   }
 
-  // The month body (everything under the nav) is keyed by month so it remounts
-  // and replays its slide-in on each change; the nav swaps in place.
-  const slideClass = `${styles.monthBody} ${
-    slideFrom === 'right'
-      ? styles.slideFromRight
-      : slideFrom === 'left'
-        ? styles.slideFromLeft
-        : ''
-  }`.trim();
+  const monthPicker = (
+    <span className={styles.monthPicker}>
+      <select
+        className={styles.monthSelect}
+        value={viewedMonth}
+        onChange={(e) => selectMonth(e.target.value)}
+        aria-label="Month"
+      >
+        {monthOptions.map((key) => (
+          <option key={key} value={key}>
+            {formatMonthLabel(key)}
+          </option>
+        ))}
+      </select>
+    </span>
+  );
 
   return (
-    <section className={styles.screen} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-      <div className={styles.monthNav}>
-        <button
-          type="button"
-          className={styles.navBtn}
-          onClick={() => goToMonth(-1)}
-          aria-label="Previous month"
-        >
-          ‹
-        </button>
-        <span className={styles.monthLabel}>{formatMonthLabel(viewedMonth)}</span>
-        <button
-          type="button"
-          className={styles.navBtn}
-          onClick={() => goToMonth(1)}
-          aria-label="Next month"
-        >
-          ›
-        </button>
-      </div>
-
-      <div key={viewedMonth} className={slideClass}>
-      <Suspense fallback={<div className={styles.cashFlowPlaceholder} />}>
-        <CashFlowChart series={cashFlow} />
-      </Suspense>
-
+    <section className={styles.screen}>
       <Suspense fallback={<div className={styles.meterPlaceholder} />}>
-        <MonthMeter summary={summary} categories={categories} />
+        <MonthMeter summary={summary} categories={categories} monthPicker={monthPicker} />
       </Suspense>
 
       {goalTarget !== undefined && summary.incomeHalere > 0 && (
@@ -730,7 +662,7 @@ export function MonthView() {
                       >
                         <CategoryIcon
                           iconId={areaIcon(group.area.id)}
-                          color={areaColor(group.area.id)}
+                          color={`area-${group.area.id}`}
                           size={28}
                         />
                         <span className={styles.rowContent}>
@@ -804,7 +736,6 @@ export function MonthView() {
           )}
         </div>
       )}
-      </div>
     </section>
   );
 }

@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { lazy, Suspense, useEffect, useMemo } from 'react';
 import type { Category } from '../../types/data';
 import { computeNetWorth } from '../../engine/networth';
+import { cashFlowForYear } from '../../engine/cashflow';
 import { isExpenseGroup, savingsRate, summarizeMonth } from '../../engine/summarize';
 import { displayVendor } from '../../engine/classify';
 import { formatKc } from '../../engine/money';
@@ -10,6 +11,13 @@ import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
 import { daysBetween, formatDayMonth, formatMonthLabel, todayIso } from '../../utils/dates';
 import styles from './Home.module.css';
+
+// Recharts is heavy; load the cash-flow chart on demand so it stays out of the
+// entry chunk (see docs/ARCHITECTURE.md — bundle split). Named memoized export,
+// re-mapped to the default lazy() expects.
+const CashFlowChart = lazy(() =>
+  import('../transactions/CashFlowChart').then((m) => ({ default: m.CashFlowChart })),
+);
 
 /** Quarterly cadence: nudge once the last snapshot is older than this. */
 const SNAPSHOT_STALE_DAYS = 92;
@@ -23,10 +31,34 @@ export function Home() {
   const defaultMonthKey = useDataStore((s) => s.defaultMonthKey);
   const goalTarget = useDataStore((s) => s.goals.monthlyLeftoverHalere);
   const loading = useDataStore((s) => s.loading);
+  const loadMonth = useDataStore((s) => s.loadMonth);
 
   const transactions = useMemo(
     () => months[defaultMonthKey] ?? [],
     [months, defaultMonthKey],
+  );
+
+  // Months January..default of the default month's year — the cash-flow chart's
+  // series. Load each (the store dedupes already-loaded months) so it has data.
+  const yearMonths = useMemo(() => {
+    const year = defaultMonthKey.slice(0, 4);
+    const upTo = Number(defaultMonthKey.slice(5, 7));
+    const list: string[] = [];
+    for (let m = 1; m <= upTo; m++) {
+      list.push(`${year}-${String(m).padStart(2, '0')}`);
+    }
+    return list;
+  }, [defaultMonthKey]);
+
+  useEffect(() => {
+    for (const mk of yearMonths) {
+      void loadMonth(mk);
+    }
+  }, [yearMonths, loadMonth]);
+
+  const cashFlow = useMemo(
+    () => cashFlowForYear(months, categories, budgets, defaultMonthKey),
+    [months, categories, budgets, defaultMonthKey],
   );
 
   const byId = useMemo(
@@ -152,6 +184,10 @@ export function Home() {
           </span>
         )}
       </div>
+
+      <Suspense fallback={<div className={styles.cashFlowPlaceholder} />}>
+        <CashFlowChart series={cashFlow} />
+      </Suspense>
 
       {goalTarget !== undefined && summary.incomeHalere > 0 && (
         <GoalReadout leftoverHalere={summary.leftoverHalere} targetHalere={goalTarget} />

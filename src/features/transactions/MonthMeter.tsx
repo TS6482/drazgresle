@@ -1,5 +1,6 @@
-import { memo, useMemo, useState } from 'react';
-import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
+import { memo, useMemo, type ReactNode } from 'react';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import type { TooltipContentProps } from 'recharts';
 import type { Category } from '../../types/data';
 import { savingsRate, type MonthSummary } from '../../engine/summarize';
 import { spendingByArea } from '../../engine/areas';
@@ -10,9 +11,12 @@ import styles from './MonthMeter.module.css';
 interface MonthMeterProps {
   summary: MonthSummary;
   categories: Category[];
+  /** Month <select>, rendered under the leftover figure inside the arch (and,
+   *  on a no-income month, as the sole control so the user isn't stranded). */
+  monthPicker?: ReactNode;
 }
 
-/** Each area's colour var — theme-aware, defined (light + dark) in the CSS. */
+/** Each area's colour var — theme-aware, defined (light + dark) in tokens.css. */
 const AREA_VAR: Record<string, string> = {
   essential: '--area-essential',
   food: '--area-food',
@@ -32,28 +36,64 @@ const REMAINDER_KEY = '__remainder';
 const SAVED_KEY = '__saved';
 const SAVED_VAR = '--area-saved';
 
-/** A selectable arc segment: a spending area, or the neutral "Saved" slice. */
-interface Segment {
+/** One arc slice as fed to Recharts (a spending area, "Saved", or the remainder). */
+interface Slice {
   key: string;
   name: string;
-  valueHalere: number;
-  colorVar: string;
+  value: number;
+  colorVar: string | null;
+}
+
+/**
+ * Floating readout for the hovered/tapped segment: the amount leads (strong ink),
+ * the segment name and its share of income follow. The empty remainder track
+ * shows nothing.
+ */
+function GaugeTooltip({ active, payload, income }: TooltipContentProps & { income: number }) {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+  const slice = payload[0]?.payload as Slice | undefined;
+  if (!slice || slice.key === REMAINDER_KEY) {
+    return null;
+  }
+  return (
+    <div className={styles.tooltip}>
+      <div className={styles.tooltipHead}>
+        <span
+          className={styles.tooltipKey}
+          style={{ background: slice.colorVar ? `var(${slice.colorVar})` : 'transparent' }}
+          aria-hidden="true"
+        />
+        <span className={styles.tooltipName}>{slice.name}</span>
+      </div>
+      <div className={styles.tooltipValue}>{formatKc(slice.value)}</div>
+      <div className={styles.tooltipPct}>
+        {formatPercent((slice.value / income) * 100, { decimals: 0 })} of income
+      </div>
+    </div>
+  );
 }
 
 /**
  * An arched "barometer" (half-donut gauge): the whole arc represents the month's
  * INCOME, filled left-to-right with a coloured segment per spending area (in
  * SPENDING_AREAS order), then a neutral "Saved" segment for money put away; the
- * remaining arc is the empty track. The true amount left (income − spent −
- * saved) sits under the arch, red when negative. Hovering/tapping a segment (or
- * its legend entry) shows that segment's amount and share of income.
+ * rest of the arc is the empty track. Only the true amount left (income − spent −
+ * saved) sits under the arch, red when negative. Hovering or tapping a segment
+ * shows its amount and share of income in a floating tooltip; a muted savings-rate
+ * line sits beneath.
  *
  * Edge cases: no income → a muted line; allocation (spend + saved) exceeding
- * income → segments fill the whole arc (reads as full), "Left" shows negative,
- * and an "Over by" note appears. A withdrawal month (saved < 0) simply shows no
- * Saved segment; "Left" still reflects true leftover.
+ * income → segments fill the whole arc (reads as full) and the leftover figure
+ * shows negative (red). A withdrawal month (saved < 0) simply shows no Saved
+ * segment; the leftover figure still reflects true leftover.
  */
-export const MonthMeter = memo(function MonthMeter({ summary, categories }: MonthMeterProps) {
+export const MonthMeter = memo(function MonthMeter({
+  summary,
+  categories,
+  monthPicker,
+}: MonthMeterProps) {
   const byId = useMemo(
     () => new Map<string, Category>(categories.map((c) => [c.id, c])),
     [categories],
@@ -62,9 +102,6 @@ export const MonthMeter = memo(function MonthMeter({ summary, categories }: Mont
     () => spendingByArea(summary.byCategory, byId),
     [summary.byCategory, byId],
   );
-  // Which area's detail is shown. Keyed by area id (not index) so it stays
-  // correct across month changes without a reset effect.
-  const [activeId, setActiveId] = useState<string | null>(null);
 
   const income = summary.incomeHalere;
   const spent = summary.spendHalere;
@@ -72,28 +109,22 @@ export const MonthMeter = memo(function MonthMeter({ summary, categories }: Mont
   const leftover = summary.leftoverHalere;
 
   if (income <= 0) {
+    // No arch to render — but the month picker must still be reachable, or an
+    // empty month strands the user with no way to navigate away.
     return (
-      <p className={styles.note}>
-        No income recorded this month, so there&apos;s nothing to measure against.
-      </p>
+      <div className={styles.meter}>
+        {monthPicker && <div className={styles.emptyPicker}>{monthPicker}</div>}
+        <p className={styles.note}>
+          No income recorded this month, so there&apos;s nothing to measure against.
+        </p>
+      </div>
     );
   }
 
-  // Selectable segments: spending areas with real spend (fixed area order),
-  // then a neutral "Saved" segment when money was put away this month.
+  // Drawn segments: spending areas with real spend (fixed area order), then a
+  // neutral "Saved" segment when money was put away this month.
   const drawn = areas.filter((a) => a.spendHalere > 0);
   const savedShown = saved > 0;
-  const segments: Segment[] = [
-    ...drawn.map((a) => ({
-      key: a.areaId,
-      name: a.name,
-      valueHalere: a.spendHalere,
-      colorVar: areaVar(a.areaId),
-    })),
-    ...(savedShown
-      ? [{ key: SAVED_KEY, name: 'Saved', valueHalere: saved, colorVar: SAVED_VAR }]
-      : []),
-  ];
 
   // The arc spans everything allocated (spend + money saved) up to income; a
   // remainder slice fills any slack and vanishes when allocation exceeds income
@@ -102,27 +133,27 @@ export const MonthMeter = memo(function MonthMeter({ summary, categories }: Mont
   const overAllocated = totalAllocated > income;
   const remainder = overAllocated ? 0 : Math.max(0, income - totalAllocated);
 
-  // Half-donut slices: the segments plus the empty remainder as a track slice.
-  // Recharts sums the values, so the arc spans the allocation (capped at income
-  // by the remainder, or the total allocation when over) across the semicircle.
-  const data = [
-    ...segments.map((s) => ({ key: s.key, value: s.valueHalere, colorVar: s.colorVar })),
-    ...(remainder > 0 ? [{ key: REMAINDER_KEY, value: remainder, colorVar: null }] : []),
+  // Half-donut slices: the coloured segments plus the empty remainder track.
+  const data: Slice[] = [
+    ...drawn.map((a) => ({
+      key: a.areaId,
+      name: a.name,
+      value: a.spendHalere,
+      colorVar: areaVar(a.areaId),
+    })),
+    ...(savedShown ? [{ key: SAVED_KEY, name: 'Saved', value: saved, colorVar: SAVED_VAR }] : []),
+    ...(remainder > 0
+      ? [{ key: REMAINDER_KEY, name: '', value: remainder, colorVar: null }]
+      : []),
   ];
 
-  const active = segments.find((s) => s.key === activeId) ?? null;
   // Always non-null here — income > 0 past the early return above.
   const rate = savingsRate(summary);
-
-  function selectAt(index: number) {
-    const slice = data[index];
-    setActiveId(slice && slice.key !== REMAINDER_KEY ? slice.key : null);
-  }
 
   return (
     <div className={styles.meter}>
       <div className={styles.gauge}>
-        <ResponsiveContainer width="100%" height={132}>
+        <ResponsiveContainer width="100%" height={170}>
           <PieChart>
             <Pie
               data={data}
@@ -132,14 +163,11 @@ export const MonthMeter = memo(function MonthMeter({ summary, categories }: Mont
               cy="100%"
               startAngle={180}
               endAngle={0}
-              innerRadius={76}
-              outerRadius={112}
+              innerRadius={104}
+              outerRadius={150}
               stroke="var(--color-surface)"
               strokeWidth={2}
               isAnimationActive={false}
-              onMouseEnter={(_, index) => selectAt(index)}
-              onMouseLeave={() => setActiveId(null)}
-              onClick={(_, index) => selectAt(index)}
             >
               {data.map((slice) => (
                 <Cell
@@ -148,70 +176,21 @@ export const MonthMeter = memo(function MonthMeter({ summary, categories }: Mont
                 />
               ))}
             </Pie>
+            <Tooltip content={(props) => <GaugeTooltip {...props} income={income} />} />
           </PieChart>
         </ResponsiveContainer>
         <div className={styles.center}>
-          <span className={styles.leftLabel}>Left</span>
           <span className={`${styles.leftValue} ${leftover < 0 ? styles.negative : ''}`}>
             {formatKc(leftover)}
           </span>
+          {monthPicker}
         </div>
-      </div>
-
-      {leftover < 0 && <p className={styles.overNote}>Over by {formatKc(-leftover)}</p>}
-
-      <div className={styles.detail}>
-        {active ? (
-          <>
-            <span
-              className={styles.detailSwatch}
-              style={{ background: `var(${active.colorVar})` }}
-              aria-hidden="true"
-            />
-            <span className={styles.detailName}>{active.name}</span>
-            <span className={styles.detailValue}>{formatKc(active.valueHalere)}</span>
-            <span className={styles.detailPct}>
-              {formatPercent((active.valueHalere / income) * 100)} of income
-            </span>
-          </>
-        ) : (
-          <span className={styles.detailHint}>Tap an area to see its amount and share.</span>
-        )}
       </div>
 
       {rate !== null && (
         <p className={styles.savingsRate}>
           Savings rate: {formatPercent(rate, { decimals: 0 })} of income
         </p>
-      )}
-
-      {segments.length > 0 && (
-        <ul className={styles.legend}>
-          {segments.map((s) => {
-            const on = s.key === activeId;
-            return (
-              <li key={s.key}>
-                <button
-                  type="button"
-                  className={`${styles.legendItem} ${on ? styles.legendItemOn : ''}`}
-                  onMouseEnter={() => setActiveId(s.key)}
-                  onMouseLeave={() => setActiveId(null)}
-                  onFocus={() => setActiveId(s.key)}
-                  onBlur={() => setActiveId(null)}
-                  onClick={() => setActiveId(on ? null : s.key)}
-                  aria-pressed={on}
-                >
-                  <span
-                    className={styles.legendSwatch}
-                    style={{ background: `var(${s.colorVar})` }}
-                    aria-hidden="true"
-                  />
-                  {s.name}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
       )}
     </div>
   );

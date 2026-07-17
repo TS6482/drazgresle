@@ -160,8 +160,11 @@ export interface Category {
    */
   icon?: string;
   /**
-   * Tile colour for this category — an `ICON_COLORS` id (see
-   * features/shared/icons). Unset falls back to the id default, then gray.
+   * @deprecated The tile colour is now derived from the category's spending
+   * area/group (see engine/categoryIcons.ts), so this field is IGNORED for
+   * expense and savings categories. Retained for backward compatibility and
+   * still honoured for INCOME categories (the gauge has no income segment), where
+   * it falls back to the id default, then gray. An `ICON_COLORS` id.
    */
   color?: string;
 }

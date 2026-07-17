@@ -106,6 +106,9 @@ data/
   categories.json        # ~10 coarse categories to start (user picked "start coarse"):
                          #   [{id, name, group: income|expense|savings, area?, icon?, color?}]
                          # (legacy groups fixed/variable/transfer still tolerated by the engine)
+                         # icon: glyph id. color: DEPRECATED (2026-07-17) — icon tile colour
+                         # derives from the category's spending area (gauge palette; savings →
+                         # neutral gray); only income categories still use a stored colour.
                          # Reserved id `savings-transfers` (group savings): the ONE category for
                          # transfers to/from the household's own savings/investment accounts —
                          # excluded from income/spending, counted NET in Saved (2026-07-17).

@@ -7,110 +7,52 @@
   gap: var(--space-5);
 }
 
-/* Everything under the month nav lives in one keyed wrapper so it can slide in
-   on each month change; it keeps the same vertical rhythm the section had. */
-.monthBody {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-}
-
-/* Directional slide makes the month turn read as motion, not a cut: the new
-   month enters from the side you're travelling toward. */
-@keyframes enterFromRight {
-  from {
-    transform: translateX(40px);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes enterFromLeft {
-  from {
-    transform: translateX(-40px);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-.slideFromRight {
-  animation: 250ms ease-out both enterFromRight;
-}
-
-.slideFromLeft {
-  animation: 250ms ease-out both enterFromLeft;
-}
-
-/* Honour a reduced-motion preference: switch months instantly, no slide. */
-@media (prefers-reduced-motion: reduce) {
-  .slideFromRight,
-  .slideFromLeft {
-    animation: none;
-  }
-}
-
-/* Month picker: borderless tinted arrows around a bold centred title. */
-.monthNav {
-  display: flex;
+/* Month picker: a native <select> styled as a compact, centred tinted control
+   that sits inside the gauge arch (below the leftover figure). appearance:none
+   drops the platform chrome; the wrapper draws a small ▾. It restores
+   pointer-events (the gauge's centre overlay disables them) so it stays tappable. */
+.monthPicker {
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+  justify-content: center;
+  pointer-events: auto;
 }
 
-.navBtn {
-  min-width: 44px;
-  min-height: 44px;
-  border: none;
-  background: transparent;
+.monthPicker::after {
+  content: '▾';
+  position: absolute;
+  right: var(--space-2);
   color: var(--color-primary);
-  font-size: 1.5rem;
-  line-height: 1;
+  font-size: var(--text-sm);
+  pointer-events: none;
+}
+
+.monthSelect {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 44px;
+  /* Right padding leaves room for the ▾ so it never overlaps the label. */
+  padding: 0 calc(var(--space-4) + var(--space-2)) 0 var(--space-3);
+  text-align: center;
+  text-align-last: center;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: transparent;
+  border: none;
   cursor: pointer;
-}
-
-.monthLabel {
-  font-size: var(--text-lg);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-/* Touch devices swipe left/right by hand to change months, so drop the arrows
-   and centre the title. Desktop (a mouse can't swipe) keeps the tappable arrows,
-   and there the floating settings circle pins to the far viewport corner, so it
-   never collides with the content column. */
-@media (hover: none) and (pointer: coarse) {
-  .navBtn {
-    display: none;
-  }
-
-  .monthNav {
-    justify-content: center;
-  }
 }
 
 .income {
   color: var(--color-primary);
 }
 
-/* Suspense placeholders for the lazily-loaded charts. Sized to each chart's real
-   rendered height (surface card look) so nothing jumps when the chunk resolves:
-   CashFlowChart ≈ title + 180px chart + legend + padding + its own bottom margin;
-   MonthMeter ≈ 132px gauge + detail line + legend + var(--space-4) padding. */
-.cashFlowPlaceholder {
-  min-height: 265px;
-  background: var(--color-surface);
-  border-radius: var(--radius);
-  margin-bottom: var(--space-3);
-}
-
+/* Suspense placeholder for the lazily-loaded gauge. Sized to its real rendered
+   height (surface card look) so nothing jumps when the chunk resolves:
+   MonthMeter ≈ 170px arch + savings-rate line + var(--space-4) padding. */
 .meterPlaceholder {
-  min-height: 240px;
+  min-height: 230px;
   background: var(--color-surface);
   border-radius: var(--radius);
 }

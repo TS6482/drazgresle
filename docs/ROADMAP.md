@@ -103,6 +103,17 @@ Statuses: `[ ]` todo · `[~]` in progress · `[x]` done.
       moved into a "Connection" section at the bottom of Settings; content and the
       read-only/error banners take over the safe-area inset handling. Budget-vs-actual
       figures on the Month view shrunk to text-sm so they stop crowding category names.
+- [x] Gauge as navigation hub; cash flow moved to Home; area-coloured icons (user spec +
+      options form, 2026-07-17): cash-flow chart now lives on Home below the month card
+      (Home loads the year's months; store dedupes); gauge enlarged to near full card
+      width with ONLY the leftover figure inside and a native month dropdown below it —
+      this replaces the month title, the arrows AND the swipe/slide experiment (user
+      tested sliding on device and asked for its removal the same day); over-budget note
+      and gauge legend removed; hover/tap tooltip shows segment name, amount, % of
+      income; category icon tiles now take their spending-area gauge colour everywhere
+      (savings → neutral gray; income keeps stored colour), Settings colour picker
+      removed, Category.color deprecated; area palette re-validated with the dataviz
+      checker. Empty months keep the dropdown reachable. 180 tests.
 - [x] Liquid Glass settings button + content to top + swipe months (user requests
       2026-07-17): the ⋯ circle restyled as an Apple Liquid Glass lens (radial highlight,
       blur+saturate, specular inset edges, float shadows, press dip; dark-mode and

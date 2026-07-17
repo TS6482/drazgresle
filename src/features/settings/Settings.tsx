@@ -12,7 +12,6 @@ import { CATEGORY_GROUP_LABELS, normalizeCategoryGroup } from '../shared/labels'
 import { MoneyInput } from '../shared/MoneyInput';
 import { CategoryIcon } from '../shared/icons/CategoryIcon';
 import { ICON_LIBRARY } from '../shared/icons/glyphs';
-import { ICON_COLORS, tileColorStyle } from '../shared/icons/colors';
 import forms from '../shared/forms.module.css';
 import styles from './Settings.module.css';
 
@@ -338,21 +337,6 @@ export function Settings() {
                 </div>
                 {pickerOpen && (
                   <div className={styles.iconPicker}>
-                    <div className={styles.swatchRow}>
-                      {ICON_COLORS.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          className={styles.swatchBtn}
-                          data-selected={resolved.colorId === c.id}
-                          aria-label={`${c.name} colour`}
-                          aria-pressed={resolved.colorId === c.id}
-                          onClick={() => void pickIcon(cat, { color: c.id })}
-                        >
-                          <span className={styles.swatchDot} style={tileColorStyle(c.id)} />
-                        </button>
-                      ))}
-                    </div>
                     <div className={styles.glyphGrid}>
                       {ICON_LIBRARY.map((g) => (
                         <button

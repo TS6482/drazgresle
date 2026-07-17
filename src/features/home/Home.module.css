@@ -30,6 +30,16 @@
   cursor: pointer;
 }
 
+/* Reserve the cash-flow chart's height while its lazy chunk loads, so the page
+   doesn't jump (matches CashFlowChart's card: title + 180px plot + legend +
+   padding + its own bottom margin). */
+.cashFlowPlaceholder {
+  min-height: 265px;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-3);
+}
+
 /* This-month card. */
 .card {
   display: flex;
