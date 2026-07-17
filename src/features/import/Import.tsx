@@ -16,7 +16,7 @@ import {
   suggestRule,
 } from '../../engine/classify';
 import { formatKc } from '../../engine/money';
-import { monthKey } from '../../engine/summarize';
+import { monthKey, SAVINGS_TRANSFERS_CATEGORY_ID } from '../../engine/summarize';
 import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
 import { formatDayMonth } from '../../utils/dates';
@@ -55,6 +55,9 @@ interface ReviewGroup {
   addRule: boolean;
   /** The rule pattern, pre-filled with the suggestion and user-editable. */
   pattern: string;
+  /** When the group's account-exact key is one of the household's own accounts,
+   *  its name — the group is pre-filled as a savings transfer and labelled. */
+  ownAccountName?: string;
 }
 
 /** A correction of an auto-classified row, with its optional learned rule. */
@@ -245,6 +248,20 @@ export function Import() {
         });
       }
 
+      // Own account numbers → account name, for flagging transfers to the
+      // household's own accounts. Only meaningful when a savings-transfers
+      // category exists to route them to; absent → the map stays empty and
+      // behaviour is identical to before.
+      const ownAccountByNumber = new Map<string, string>();
+      if (categories.some((c) => c.id === SAVINGS_TRANSFERS_CATEGORY_ID)) {
+        for (const acc of accounts) {
+          const num = acc.accountNumber?.trim();
+          if (num) {
+            ownAccountByNumber.set(num, acc.name);
+          }
+        }
+      }
+
       // Group the unclassified rows by their suggested rule key, so one
       // decision covers every occurrence of the same vendor.
       const groupMap = new Map<string, ReviewGroup>();
@@ -256,6 +273,13 @@ export function Import() {
         const key = s ? `${s.field}|${s.pattern.toLowerCase()}` : `solo-${item.id}`;
         let g = groupMap.get(key);
         if (!g) {
+          // An account-exact key matching one of our own accounts starts as a
+          // savings transfer (one less decision; addRule stays true, so
+          // committing learns the account rule for future imports).
+          const ownAccountName =
+            s?.field === 'counterpartyAccount'
+              ? ownAccountByNumber.get(s.pattern.trim())
+              : undefined;
           g = {
             key,
             label:
@@ -266,10 +290,13 @@ export function Import() {
             field: s?.field ?? null,
             suggestedPattern: s?.pattern ?? '',
             memberIds: [],
-            categoryId: null,
+            categoryId: ownAccountName !== undefined ? SAVINGS_TRANSFERS_CATEGORY_ID : null,
             addRule: s !== null,
             pattern: s?.pattern ?? '',
           };
+          if (ownAccountName !== undefined) {
+            g.ownAccountName = ownAccountName;
+          }
           groupMap.set(key, g);
         }
         g.memberIds.push(item.id);
@@ -535,6 +562,11 @@ export function Import() {
           </span>
           {viaRule && <span className={styles.viaRule}>matched by your new rule</span>}
         </div>
+        {group.ownAccountName && (
+          <span className={styles.ownAccount}>
+            → your own account: {group.ownAccountName} — counted as savings transfer
+          </span>
+        )}
         {first.parsed.description && first.parsed.description !== group.label && (
           <span className={styles.desc}>{first.parsed.description}</span>
         )}

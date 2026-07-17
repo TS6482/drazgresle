@@ -88,6 +88,16 @@ Statuses: `[ ]` todo · `[~]` in progress · `[x]` done.
       editor intact). The show/hide switch and the `prefs.showTransfers` setting are
       removed (collapse replaces them; stale stored key ignored on read). Shared Toggle
       component kept for future settings.
+- [x] ONE savings-transfer category + savings rate + own-account detection (user spec
+      2026-07-17, two Q&A rounds): reserved `savings-transfers` category (group savings)
+      replaces both "Bank transfer" and the reserved "Transfer" — own-account movements
+      count NET in Saved; lunch top-ups are a normal expense (user: "categorize as eating
+      out"); engine `savingsRate` (net saved ÷ income, may be negative/>100 %, null without
+      income) shown on Month view + Home, a Phase 3 input; `Account.accountNumber` lets
+      import review pre-fill rows to own accounts as savings transfers (editable, learns
+      the account rule on commit). Transfers card removed from Month view. Data migrated
+      (37 rows, 4 rules retargeted, 1 duplicate rule dropped; 2 misfiled rows left
+      unclassified for the user). 177 tests.
 - [x] Month view (`#/month`): income/spent/net summary, budget bars with over-by warnings,
       transaction list with inline category edit; category management + salaries in Settings;
       new "this month's money" home; 4-tab navigation. *(Phase 2a.)*
@@ -122,6 +132,16 @@ Monte Carlo · multi-currency · PSD2 bank connections · Czech UI translation �
 import.
 
 ## Decision log
+
+- 2026-07-17 — Savings-transfer model finalized (user Q&A, 2 rounds): ONE reserved
+  `savings-transfers` category for movements to/from own savings/investment accounts (net
+  counts as Saved; a pass-through in+out cancels to 0 and never touches income/expense);
+  withdrawals read NET; savings rate = net saved ÷ income incl. Investments, shown Month +
+  Home, feeds Phase 3; own accounts recognized on import via optional `Account.accountNumber`
+  (exact match, manual override) — chosen over fuzzy pattern-guessing; lunch-account top-ups
+  are a plain expense per user ("I will just categorize it as eating out or groceries").
+  Migration findings surfaced instead of guessed: a family payment ("Dražkovi", −15 000) and a
+  go-kart card payment (−5 100) were misfiled as Transfer → left unclassified for the user.
 
 - 2026-07-16 — Transfers revisited so "true saving" is visible (user chose "Both"): (a)
   transfers to the household **savings account** are now a **"Bank transfer" category (group

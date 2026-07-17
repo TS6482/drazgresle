@@ -24,6 +24,15 @@ export type BudgetMap = Record<string, CategoryBudget>;
 export const TRANSFER_CATEGORY_ID = 'transfer';
 
 /**
+ * The reserved category for transfers to/from the household's own
+ * savings/investment accounts (group `savings`; its net counts as Saved). One
+ * such category exists in the data repo. Note this is a savings-group category,
+ * NOT a transfer-group one — it is deliberately NOT excluded like the legacy
+ * `transfer` id/group, so its net lands in `savedHalere`.
+ */
+export const SAVINGS_TRANSFERS_CATEGORY_ID = 'savings-transfers';
+
+/**
  * Groups whose outflow is SPENDING (savings are counted separately). `'expense'`
  * is the current group; `'fixed'` and `'variable'` are legacy aliases kept for
  * backward compatibility — the app used to split spending into those two (always
@@ -222,4 +231,17 @@ export function summarizeMonth(
     unclassifiedCount,
     transferCount,
   };
+}
+
+/**
+ * The month's savings rate — the share of income put away net. Feeds scenario
+ * planning (Phase 3). Returns `null` when there is no positive income to measure
+ * against; otherwise `savedHalere / incomeHalere × 100`, which may be negative in
+ * a net-withdrawal month and may exceed 100 (saving more than was earned).
+ */
+export function savingsRate(summary: MonthSummary): number | null {
+  if (summary.incomeHalere <= 0) {
+    return null;
+  }
+  return (summary.savedHalere / summary.incomeHalere) * 100;
 }

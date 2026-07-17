@@ -108,6 +108,13 @@
   color: var(--color-text-muted);
 }
 
+/* Muted savings-rate readout under the detail line — same weight as .detailHint. */
+.savingsRate {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
 /* Legend: swatch + name per drawn area. Each a ≥44px tap target so narrow
    segments are still reachable on a phone. */
 .legend {

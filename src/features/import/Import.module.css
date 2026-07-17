@@ -152,6 +152,12 @@
   white-space: nowrap;
 }
 
+/* Hint marking a group whose account is one of the household's own accounts. */
+.ownAccount {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
 /* "Matched by your new rule" chip on a group covered by live propagation. */
 .viaRule {
   padding: 1px var(--space-2);

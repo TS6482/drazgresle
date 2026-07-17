@@ -5,9 +5,10 @@ import {
   isSavingsGroup,
   isTransferCategory,
   monthKey,
+  savingsRate,
   summarizeMonth,
 } from './summarize';
-import type { BudgetMap } from './summarize';
+import type { BudgetMap, MonthSummary } from './summarize';
 import type { Category, Transaction } from '../types/data';
 
 const categories: Category[] = [
@@ -404,5 +405,37 @@ describe('summarizeMonth', () => {
     );
     expect(s.transferCount).toBe(1);
     expect(s.spendHalere).toBe(0);
+  });
+});
+
+describe('savingsRate', () => {
+  function summary(partial: Partial<MonthSummary>): MonthSummary {
+    return {
+      incomeHalere: 0,
+      spendHalere: 0,
+      savedHalere: 0,
+      leftoverHalere: 0,
+      byCategory: [],
+      unclassifiedCount: 0,
+      transferCount: 0,
+      ...partial,
+    };
+  }
+
+  it('is the share of income put away net', () => {
+    expect(savingsRate(summary({ incomeHalere: 5_000_000, savedHalere: 1_000_000 }))).toBe(20);
+  });
+
+  it('is null when income is zero or negative', () => {
+    expect(savingsRate(summary({ incomeHalere: 0, savedHalere: 1_000_000 }))).toBeNull();
+    expect(savingsRate(summary({ incomeHalere: -100_000, savedHalere: 1_000_000 }))).toBeNull();
+  });
+
+  it('goes negative in a net-withdrawal month', () => {
+    expect(savingsRate(summary({ incomeHalere: 5_000_000, savedHalere: -400_000 }))).toBe(-8);
+  });
+
+  it('can exceed 100 when more is saved than earned', () => {
+    expect(savingsRate(summary({ incomeHalere: 1_000_000, savedHalere: 1_500_000 }))).toBe(150);
   });
 });

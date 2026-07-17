@@ -65,6 +65,9 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
   const [name, setName] = useState(account?.name ?? '');
   const [type, setType] = useState<AccountType>(account?.type ?? 'checking');
   const [owner, setOwner] = useState<AccountOwner>(account?.owner ?? 'joint');
+  // Own account number ("number/bankCode") — lets imports recognize transfers to
+  // this account. Free text (contains "/"), so no numeric input mode.
+  const [accountNumber, setAccountNumber] = useState(account?.accountNumber ?? '');
   // Air Bank statement-driven balance toggle (checking/savings only).
   const [fromStatements, setFromStatements] = useState(account?.statementSource === 'airbank');
 
@@ -185,6 +188,11 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
     // Statement-driven balance applies only to bank accounts.
     if ((type === 'checking' || type === 'savings') && fromStatements) {
       next.statementSource = 'airbank';
+    }
+
+    const trimmedAccountNumber = accountNumber.trim();
+    if (trimmedAccountNumber !== '') {
+      next.accountNumber = trimmedAccountNumber;
     }
 
     if (type === 'mortgage') {
@@ -312,6 +320,24 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
             <option value="B">B</option>
           </select>
         </div>
+      </div>
+
+      <div className={forms.field}>
+        <label className={forms.label} htmlFor="acc-number">
+          Account number
+        </label>
+        <input
+          id="acc-number"
+          className={forms.input}
+          type="text"
+          autoComplete="off"
+          value={accountNumber}
+          onChange={(e) => setAccountNumber(e.target.value)}
+          placeholder="1234567890/0800"
+        />
+        <span className={forms.hint}>
+          Optional — lets imports recognize transfers to this account (&quot;1234567890/0800&quot;).
+        </span>
       </div>
 
       {type !== 'mortgage' && type !== 'family-loan' && !isPurchaseType(type) && (

@@ -88,6 +88,12 @@ export interface Account {
    * for `checking`/`savings` accounts (see docs/ARCHITECTURE.md §4).
    */
   statementSource?: 'airbank';
+  /**
+   * The account's own number as `"number/bankCode"` (e.g. `"1234567890/0800"`);
+   * when set, imported statement rows whose counterparty account matches are
+   * flagged as transfers to the household's own account.
+   */
+  accountNumber?: string;
 }
 
 /** `accounts.json`. */

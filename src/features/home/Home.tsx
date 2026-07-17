@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import type { Category } from '../../types/data';
 import { computeNetWorth } from '../../engine/networth';
-import { isExpenseGroup, summarizeMonth } from '../../engine/summarize';
+import { isExpenseGroup, savingsRate, summarizeMonth } from '../../engine/summarize';
 import { displayVendor } from '../../engine/classify';
 import { formatKc } from '../../engine/money';
+import { formatPercent } from '../../engine/percent';
 import { GoalReadout } from '../shared/GoalReadout';
 import { useDataStore } from '../../store/data';
 import { navigate } from '../../router/useHashRoute';
@@ -96,6 +97,10 @@ export function Home() {
     totalBudget && totalBudget > 0 ? Math.min(1, summary.spendHalere / totalBudget) : 0;
   const overBudget = totalBudget !== null && summary.spendHalere > totalBudget;
 
+  // Non-null only when the month has income — then the Saved line carries the
+  // share of income put away, otherwise it stays a plain amount.
+  const savedRate = savingsRate(summary);
+
   return (
     <section className={styles.home}>
       <button type="button" className={styles.addButton} onClick={() => navigate('/add')}>
@@ -141,7 +146,10 @@ export function Home() {
           </>
         )}
         {summary.savedHalere !== 0 && (
-          <span className={styles.cardMeta}>Saved {formatKc(summary.savedHalere)}</span>
+          <span className={styles.cardMeta}>
+            Saved {formatKc(summary.savedHalere)}
+            {savedRate !== null && ` · ${formatPercent(savedRate, { decimals: 0 })} of income`}
+          </span>
         )}
       </div>
 

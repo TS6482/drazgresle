@@ -1,12 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type { Category, Rule, RuleField, Transaction } from '../../types/data';
-import {
-  isExpenseGroup,
-  isSavingsGroup,
-  isTransferCategory,
-  summarizeMonth,
-  TRANSFER_CATEGORY_ID,
-} from '../../engine/summarize';
+import { isExpenseGroup, isSavingsGroup, summarizeMonth } from '../../engine/summarize';
 import {
   classify,
   displayVendor,
@@ -81,8 +75,6 @@ export function MonthView() {
   const [openAreas, setOpenAreas] = useState<Record<string, boolean>>({});
   // The full transaction list is collapsed by default; unclassified stay pinned.
   const [showAll, setShowAll] = useState(false);
-  // The Transfers group card is collapsed by default (per-visit UI state).
-  const [transfersOpen, setTransfersOpen] = useState(false);
 
   // Months January..viewed of the viewed year — for the cash-flow chart.
   const yearMonths = useMemo(() => {
@@ -109,7 +101,6 @@ export function MonthView() {
     setOpenCategories({});
     setOpenAreas({});
     setShowAll(false);
-    setTransfersOpen(false);
     setPending(null);
     setNoteDraft(null);
     setViewedMonth((m) => shiftMonth(m, delta));
@@ -166,22 +157,6 @@ export function MonthView() {
   }, [ordered]);
 
   const unclassified = useMemo(() => ordered.filter((t) => t.categoryId === null), [ordered]);
-
-  // Transfers between own accounts (reserved `'transfer'` category or any
-  // category whose group is `'transfer'`). Never counted in any total — the
-  // engine already excludes them; this list just surfaces them. Reuses the
-  // engine's transfer test so the two stay in lock-step.
-  const transferTxs = useMemo(
-    () => ordered.filter((t) => t.categoryId !== null && isTransferCategory(t.categoryId, byId)),
-    [ordered, byId],
-  );
-  const transferNet = useMemo(
-    () => transferTxs.reduce((sum, t) => sum + t.amountHalere, 0),
-    [transferTxs],
-  );
-  // The transfer category's tile icon — falls back to tag/gray when the reserved
-  // category is absent (the section is display-only regardless).
-  const transferIcon = iconFor(TRANSFER_CATEGORY_ID);
 
   // Budget-vs-actual splits into spending (ceiling budgets) and saving (target
   // floors). Income rows never appear — they are already the Income total. The
@@ -753,38 +728,6 @@ export function MonthView() {
                 {savingRows.map((row) => renderBudgetRow(row, true))}
               </ul>
             </>
-          )}
-        </div>
-      )}
-
-      {transferTxs.length > 0 && (
-        <div className={styles.areaGroup}>
-          <button
-            type="button"
-            className={styles.areaHeader}
-            onClick={() => setTransfersOpen((v) => !v)}
-            aria-expanded={transfersOpen}
-          >
-            <CategoryIcon iconId={transferIcon.iconId} color={transferIcon.colorId} size={28} />
-            <span className={styles.rowContent}>
-              <span className={styles.areaName}>Transfers</span>
-              <span className={styles.rowRight}>
-                <span className={styles.budgetFigures}>
-                  Net {formatKc(transferNet)}
-                  <span
-                    className={`${styles.chevron} ${transfersOpen ? styles.chevronOpen : ''}`}
-                    aria-hidden="true"
-                  >
-                    ›
-                  </span>
-                </span>
-              </span>
-            </span>
-          </button>
-          {transfersOpen && (
-            <ul className={`${styles.txList} ${styles.drillList}`}>
-              {transferTxs.map(renderRow)}
-            </ul>
           )}
         </div>
       )}

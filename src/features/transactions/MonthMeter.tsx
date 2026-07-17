@@ -1,7 +1,7 @@
 import { memo, useMemo, useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import type { Category } from '../../types/data';
-import type { MonthSummary } from '../../engine/summarize';
+import { savingsRate, type MonthSummary } from '../../engine/summarize';
 import { spendingByArea } from '../../engine/areas';
 import { formatKc } from '../../engine/money';
 import { formatPercent } from '../../engine/percent';
@@ -111,6 +111,8 @@ export const MonthMeter = memo(function MonthMeter({ summary, categories }: Mont
   ];
 
   const active = segments.find((s) => s.key === activeId) ?? null;
+  // Always non-null here — income > 0 past the early return above.
+  const rate = savingsRate(summary);
 
   function selectAt(index: number) {
     const slice = data[index];
@@ -176,6 +178,12 @@ export const MonthMeter = memo(function MonthMeter({ summary, categories }: Mont
           <span className={styles.detailHint}>Tap an area to see its amount and share.</span>
         )}
       </div>
+
+      {rate !== null && (
+        <p className={styles.savingsRate}>
+          Savings rate: {formatPercent(rate, { decimals: 0 })} of income
+        </p>
+      )}
 
       {segments.length > 0 && (
         <ul className={styles.legend}>

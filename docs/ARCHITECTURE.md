@@ -104,7 +104,11 @@ data/
                          # mortgage balance is computed by the loan model but stored per
                          # snapshot too (audit trail + drift correction)
   categories.json        # ~10 coarse categories to start (user picked "start coarse"):
-                         #   [{id, name, group: income|fixed|variable|savings, color?}]
+                         #   [{id, name, group: income|expense|savings, area?, icon?, color?}]
+                         # (legacy groups fixed/variable/transfer still tolerated by the engine)
+                         # Reserved id `savings-transfers` (group savings): the ONE category for
+                         # transfers to/from the household's own savings/investment accounts —
+                         # excluded from income/spending, counted NET in Saved (2026-07-17).
   rules.json             # vendor→category rules: [{id, field: counterparty|description,
                          #   match: contains|exact, pattern, categoryId, createdFrom?}]
   budgets.json           # per category: {categoryId: {defaultMonthlyHalere,
@@ -128,6 +132,14 @@ Notes:
 - Transactions are sharded per month to keep API payloads small and merges rare.
 - `importHash` = hash of (date, amount, counterparty, raw description) → dedupe when the same
   statement is uploaded twice or exports overlap.
+- **Savings transfers & savings rate (2026-07-17):** only the shared checking account's
+  statements are imported. Money moved to/from the household's own savings/investment accounts
+  is classified into the reserved `savings-transfers` category (or `investments`) — never
+  income or expense — and the month's **savings rate** = net savings-group outflow ÷ income
+  (engine `savingsRate`, shown on Month + Home; a Phase 3 scenario-planning input). Accounts
+  may carry an optional `accountNumber` ("number/bankCode"); import review pre-fills a
+  statement row whose counterparty account matches one as a savings transfer (manual override
+  always possible, and confirming teaches the usual account-exact rule).
 
 ### Mortgage loan model (confirmed: full model, not manual balances)
 
