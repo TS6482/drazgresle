@@ -129,6 +129,88 @@
   align-items: center;
 }
 
+/* Inside a subpage the group is implied, so the name input fills the whole main
+   line (no group select beside it). */
+.catMainSingle {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+}
+
+/* --- Top-level group navigation: 7 tappable rows in one grouped card --- */
+.groupNav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.groupNav > li + li {
+  border-top: var(--hairline) solid var(--color-border);
+}
+
+/* Whole-row tappable ≥44px control: icon, name, count, chevron. */
+.groupNavRow {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font-size: var(--text-base);
+}
+
+.groupNavName {
+  flex: 1;
+  min-width: 0;
+}
+
+.groupNavCount {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.groupNavChevron {
+  color: var(--color-text-muted);
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+
+/* --- Subpage: back control + group heading above the category list --- */
+.subpageBack {
+  display: flex;
+}
+
+/* iOS tinted back button (‹ Categories). */
+.backBtn {
+  min-height: 44px;
+  padding: 0 var(--space-2) 0 0;
+  background: transparent;
+  border: none;
+  color: var(--color-primary);
+  font-size: var(--text-base);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.subpageHeading {
+  margin: 0;
+  padding: 0 var(--space-4);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
 /* Inline icon picker: a scrollable glyph grid over a subtle inset fill. */
 .iconPicker {
   display: flex;
@@ -195,6 +277,15 @@
 .addRow {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* Contextual add row on a subpage: just a name input + the add button (the
+   group/area is implied by the open subpage). */
+.addRowSingle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--space-2);
   align-items: center;
 }

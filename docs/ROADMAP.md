@@ -114,6 +114,14 @@ Statuses: `[ ]` todo · `[~]` in progress · `[x]` done.
       (savings → neutral gray; income keeps stored colour), Settings colour picker
       removed, Category.color deprecated; area palette re-validated with the dataviz
       checker. Empty months keep the dropdown reachable. 180 tests.
+- [x] Home reworked + nav icons + Settings category subpages (user requests 2026-07-18):
+      Home drops Top spending/Recent for an "Averages (last 6 months)" card (per-area avg
+      spend + avg income, new tested engine helper `monthlyAverages`) and gains a glanceable
+      net-worth sparkline below the goal (net line + soft fill, lazy, tap → Net worth). Bottom
+      nav uses the app's own monochrome line glyphs (grey/indigo). Settings Categories became
+      two-level: 7 top-level rows (5 spending areas + Income + Savings) each opening a subpage
+      of just that group's categories with a context-scoped add. All via component state
+      (no new routes); existing category handlers reused.
 - [x] App-wide iOS/Apple restyle complete (user request 2026-07-17/18, delivered in batches):
       every screen now uses the Month view's design language — inset grouped cards, hairline
       separators, systemGray section headers, xl page titles, filled/tinted iOS buttons,
