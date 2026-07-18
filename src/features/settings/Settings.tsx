@@ -114,6 +114,14 @@ export function Settings() {
   // of resetting every draft to the just-saved store value.
   const [skipCategoryReseed, setSkipCategoryReseed] = useState(false);
 
+  // Navigate between subpages, clearing per-subpage transient state so a typed
+  // name or an open icon picker never leaks from one group's subpage to another.
+  function openGroup(sel: CatGroupSel | null) {
+    setOpenCatGroup(sel);
+    setNewName('');
+    setIconPickerFor(null);
+  }
+
   // Reseed (during render, React's recommended pattern) when the stored data
   // changes — e.g. after the initial load resolves or a save completes.
   const [seedPersons, setSeedPersons] = useState(storePersons);
@@ -399,7 +407,7 @@ export function Settings() {
                 <button
                   type="button"
                   className={styles.groupNavRow}
-                  onClick={() => setOpenCatGroup(row.sel)}
+                  onClick={() => openGroup(row.sel)}
                 >
                   <CategoryIcon iconId={row.icon} color={row.color} size={32} />
                   <span className={styles.groupNavName}>{row.name}</span>
@@ -418,7 +426,7 @@ export function Settings() {
               <button
                 type="button"
                 className={styles.backBtn}
-                onClick={() => setOpenCatGroup(null)}
+                onClick={() => openGroup(null)}
               >
                 ‹ Categories
               </button>

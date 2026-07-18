@@ -119,16 +119,6 @@
   cursor: pointer;
 }
 
-/* The main line: name, group, action — the grid the row used to be. */
-.catMain {
-  flex: 1;
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-  gap: var(--space-2);
-  align-items: center;
-}
-
 /* Inside a subpage the group is implied, so the name input fills the whole main
    line (no group select beside it). */
 .catMainSingle {
@@ -274,13 +264,6 @@
   border-radius: var(--radius);
 }
 
-.addRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
-  gap: var(--space-2);
-  align-items: center;
-}
-
 /* Contextual add row on a subpage: just a name input + the add button (the
    group/area is implied by the open subpage). */
 .addRowSingle {
@@ -375,12 +358,4 @@
   font-size: var(--text-base);
   font-weight: 600;
   cursor: pointer;
-}
-
-/* On narrow phones let the category rows stack so controls never overlap. */
-@media (max-width: 480px) {
-  .catMain,
-  .addRow {
-    grid-template-columns: 1fr;
-  }
 }

@@ -113,6 +113,7 @@ export function MonthView() {
     setShowAll(false);
     setPending(null);
     setNoteDraft(null);
+    setEditingId(null);
     setViewedMonth(key);
   }
 
