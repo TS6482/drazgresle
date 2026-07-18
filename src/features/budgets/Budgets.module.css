@@ -1,9 +1,13 @@
+/* iOS-style Budgets: grouped-gray page with white inset cards, hairline row
+   separators, systemGray section headers, filled/tinted buttons. Matches the
+   language already shipped on Month / Accounts / Settings / Import. */
 .screen {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-5);
 }
 
+/* Page title — matches Net worth / Accounts / Settings / Month. */
 .heading {
   margin: 0;
   font-size: var(--text-xl);
@@ -15,55 +19,79 @@
   font-size: var(--text-sm);
 }
 
-/* Section heading (Spending / Saving targets). */
-.sectionHeading {
-  margin: var(--space-2) 0 0;
-  font-size: var(--text-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted);
-}
-
+/* Month stepper — an inset grouped card; tinted chevrons, centred label. */
 .monthNav {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-surface);
+  border-radius: var(--radius);
 }
 
 .navBtn {
   min-width: 44px;
   min-height: 44px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  color: var(--color-text);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-primary);
   font-size: var(--text-lg);
   cursor: pointer;
 }
 
 .monthLabel {
   font-size: var(--text-lg);
-  font-weight: 700;
+  font-weight: 600;
 }
 
+/* One section (Spending / Saving targets): inset header above its grouped card. */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* iOS grouped section header: small systemGray caps, inset to align with rows. */
+.groupHeading {
+  margin: 0;
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+}
+
+/* A helper line inside a section is inset to align with the header + rows. */
+.group > .muted {
+  padding: 0 var(--space-4);
+}
+
+/* The category list is one inset grouped card; rows split by hairlines. */
 .list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
+/* Borderless rows; hierarchy comes from the hairline between them. */
 .row {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+}
+
+.row + .row {
+  border-top: var(--hairline) solid var(--color-border);
 }
 
 .rowTop {
@@ -76,6 +104,7 @@
 .rowText {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   padding-top: var(--space-1);
 }
 
@@ -83,20 +112,23 @@
   font-weight: 600;
 }
 
-.group {
+.groupLabel {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
-/* Cap the default MoneyInput's width so its label/field sit on the right. */
+/* Cap the default MoneyInput's width so its label/field sit on the right, with
+   right-aligned tabular figures. */
 .defaultField {
   flex: 0 0 auto;
   width: 160px;
   max-width: 55%;
+  font-variant-numeric: tabular-nums;
 }
 
 .overrideToggle {
   align-self: flex-start;
+  min-height: 44px;
   padding: var(--space-1) 0;
   background: transparent;
   border: none;
@@ -110,6 +142,44 @@
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-3);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   background: var(--color-surface-alt);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Actions — filled primary + tinted secondary, iOS 48px, no borders. */
+.actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.primaryBtn,
+.secondaryBtn {
+  flex: 1;
+  min-height: 48px;
+  border-radius: var(--radius);
+  border: none;
+  font-size: var(--text-base);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primaryBtn {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.primaryBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.secondaryBtn {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+
+.secondaryBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }

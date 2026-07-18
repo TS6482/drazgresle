@@ -1,3 +1,6 @@
+/* iOS-style first-run / connect screen: a centred hero (app name + intro) over
+   an inset white card holding the token field and the filled connect button.
+   Matches the language shipped across the app (grouped cards, tinted controls). */
 .screen {
   min-height: 100vh;
   max-width: var(--content-max);
@@ -5,6 +8,7 @@
   padding: var(--space-6) var(--space-4);
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: var(--space-4);
 }
 
@@ -19,10 +23,14 @@
   color: var(--color-text-muted);
 }
 
+/* The connect form is one inset grouped card. */
 .form {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border-radius: var(--radius);
 }
 
 .label {
@@ -32,9 +40,11 @@
 
 .input {
   width: 100%;
-  padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  min-width: 0;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: var(--hairline) solid var(--color-border);
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
   font-size: var(--text-base);
@@ -45,29 +55,36 @@
   outline-offset: 1px;
 }
 
+/* Filled iOS primary button, ≥48px, no border. */
 .button {
-  padding: var(--space-3);
+  min-height: 48px;
   border: none;
   border-radius: var(--radius);
   background: var(--color-primary);
   color: var(--color-on-primary);
+  font-size: var(--text-base);
   font-weight: 600;
   cursor: pointer;
 }
 
 .button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: default;
 }
 
+/* iOS inset danger note for a failed connection. */
 .error {
   margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
   color: var(--color-danger);
   font-size: var(--text-sm);
 }
 
 .hint {
   margin: 0;
+  padding: 0 var(--space-1);
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }

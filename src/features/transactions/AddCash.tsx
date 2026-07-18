@@ -83,67 +83,69 @@ export function AddCash() {
         </button>
       </div>
 
-      <MoneyInput id="cash-amount" label="Amount" value={amount} onChange={setAmount} />
+      <div className={styles.card}>
+        <MoneyInput id="cash-amount" label="Amount" value={amount} onChange={setAmount} />
 
-      <div className={forms.field}>
-        <label className={forms.label} htmlFor="cash-category">
-          Category
-        </label>
-        {firstCategory ? (
-          <CategoryPicker
-            id="cash-category"
-            value={categoryId}
-            onChange={setCategoryId}
-            categories={categories}
-            filter={pickable}
-            includeNone
-            noneLabel="No category yet"
+        <div className={forms.field}>
+          <label className={forms.label} htmlFor="cash-category">
+            Category
+          </label>
+          {firstCategory ? (
+            <CategoryPicker
+              id="cash-category"
+              value={categoryId}
+              onChange={setCategoryId}
+              categories={categories}
+              filter={pickable}
+              includeNone
+              noneLabel="No category yet"
+            />
+          ) : (
+            <p className={styles.muted}>
+              No categories yet — add some in Settings, or save now and categorize later.
+            </p>
+          )}
+        </div>
+
+        <div className={forms.field}>
+          <label className={forms.label} htmlFor="cash-note">
+            Note (optional)
+          </label>
+          <input
+            id="cash-note"
+            className={forms.input}
+            type="text"
+            autoComplete="off"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="e.g. lunch, market"
           />
-        ) : (
-          <p className={styles.muted}>
-            No categories yet — add some in Settings, or save now and categorize later.
-          </p>
-        )}
+        </div>
+
+        <div className={forms.field}>
+          <label className={forms.label} htmlFor="cash-date">
+            Date
+          </label>
+          <input
+            id="cash-date"
+            className={forms.input}
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </div>
       </div>
 
-      <div className={forms.field}>
-        <label className={forms.label} htmlFor="cash-note">
-          Note (optional)
-        </label>
-        <input
-          id="cash-note"
-          className={forms.input}
-          type="text"
-          autoComplete="off"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="e.g. lunch, market"
-        />
-      </div>
-
-      <div className={forms.field}>
-        <label className={forms.label} htmlFor="cash-date">
-          Date
-        </label>
-        <input
-          id="cash-date"
-          className={forms.input}
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
-      </div>
-
-      <div className={forms.actions}>
+      <div className={styles.actions}>
         <button
           type="button"
-          className={forms.primary}
+          className={styles.primaryBtn}
           onClick={() => void handleSubmit()}
           disabled={!canSave || saving}
         >
           {saving ? 'Saving…' : 'Save'}
         </button>
-        <button type="button" className={forms.secondary} onClick={() => navigate('/')}>
+        <button type="button" className={styles.secondaryBtn} onClick={() => navigate('/')}>
           Cancel
         </button>
       </div>

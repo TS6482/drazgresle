@@ -8,7 +8,6 @@ import { navigate } from '../../router/useHashRoute';
 import { formatMonthLabel, shiftMonth } from '../../utils/dates';
 import { CATEGORY_GROUP_LABELS, CATEGORY_GROUP_ORDER } from '../shared/labels';
 import { MoneyInput } from '../shared/MoneyInput';
-import forms from '../shared/forms.module.css';
 import styles from './Budgets.module.css';
 
 /** Budgets apply to active expense AND savings categories (never income /
@@ -158,32 +157,32 @@ export function Budgets() {
       )}
 
       {spendingCats.length > 0 && (
-        <>
-          <h2 className={styles.sectionHeading}>Spending</h2>
+        <div className={styles.group}>
+          <h2 className={styles.groupHeading}>Spending</h2>
           <ul className={styles.list}>{spendingCats.map(renderCategoryRow)}</ul>
-        </>
+        </div>
       )}
 
       {savingCats.length > 0 && (
-        <>
-          <h2 className={styles.sectionHeading}>Saving targets</h2>
+        <div className={styles.group}>
+          <h2 className={styles.groupHeading}>Saving targets</h2>
           <p className={styles.muted}>
             Targets to hit, not ceilings — the month view cheers when you reach them.
           </p>
           <ul className={styles.list}>{savingCats.map(renderCategoryRow)}</ul>
-        </>
+        </div>
       )}
 
-      <div className={forms.actions}>
+      <div className={styles.actions}>
         <button
           type="button"
-          className={forms.primary}
+          className={styles.primaryBtn}
           onClick={() => void handleSave()}
           disabled={saving || budgetable.length === 0}
         >
           {saving ? 'Saving…' : 'Save budgets'}
         </button>
-        <button type="button" className={forms.secondary} onClick={() => navigate('/month')}>
+        <button type="button" className={styles.secondaryBtn} onClick={() => navigate('/month')}>
           Cancel
         </button>
       </div>
@@ -199,7 +198,7 @@ export function Budgets() {
               <div className={styles.rowTop}>
                 <span className={styles.rowText}>
                   <span className={styles.name}>{cat.name}</span>
-                  <span className={styles.group}>{CATEGORY_GROUP_LABELS[cat.group]}</span>
+                  <span className={styles.groupLabel}>{CATEGORY_GROUP_LABELS[cat.group]}</span>
                 </span>
                 <div className={styles.defaultField}>
                   <MoneyInput
@@ -239,7 +238,7 @@ export function Budgets() {
                   />
                   <button
                     type="button"
-                    className={forms.secondary}
+                    className={styles.secondaryBtn}
                     onClick={() => setOverrides((prev) => ({ ...prev, [cat.id]: '' }))}
                   >
                     Clear override

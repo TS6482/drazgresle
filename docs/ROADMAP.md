@@ -114,6 +114,12 @@ Statuses: `[ ]` todo · `[~]` in progress · `[x]` done.
       (savings → neutral gray; income keeps stored colour), Settings colour picker
       removed, Category.color deprecated; area palette re-validated with the dataviz
       checker. Empty months keep the dropdown reachable. 180 tests.
+- [x] App-wide iOS/Apple restyle complete (user request 2026-07-17/18, delivered in batches):
+      every screen now uses the Month view's design language — inset grouped cards, hairline
+      separators, systemGray section headers, xl page titles, filled/tinted iOS buttons,
+      theme-token colors (dark-mode safe). Batches: Home+Net worth → Accounts → Settings →
+      Import → Budgets+Add cash+connect. Visual-only (no logic/data/engine changes); shared
+      forms.module.css left untouched. Net worth charts deferred (chrome only).
 - [x] Floating ⋯ becomes a menu (user request 2026-07-17, "Always a menu"): the Liquid-Glass
       ⋯ button now opens an iOS popover — "Settings" first, then any actions the current screen
       registers via a new `useMenuStore` screen-actions registry. Accounts' in-page "+ Add"
