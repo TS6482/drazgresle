@@ -17,6 +17,9 @@ import styles from './Settings.module.css';
 
 const PERSON_IDS: PersonId[] = ['A', 'B'];
 
+/** Selectable pay-cycle start days (1–28; a select avoids numeric parsing). */
+const PAY_CYCLE_START_DAYS: number[] = Array.from({ length: 28 }, (_, i) => i + 1);
+
 /**
  * Which of the 7 top-level category groups is open as a subpage. `null` (in
  * component state) means the top-level list of groups is showing instead.
@@ -87,6 +90,8 @@ export function Settings() {
   const storePersons = useDataStore((s) => s.persons);
   const projectionDefaults = useDataStore((s) => s.projectionDefaults);
   const goals = useDataStore((s) => s.goals);
+  const prefs = useDataStore((s) => s.prefs);
+  const savePrefs = useDataStore((s) => s.savePrefs);
   const categories = useDataStore((s) => s.categories);
   const saveSettings = useDataStore((s) => s.saveSettings);
   const saveGoals = useDataStore((s) => s.saveGoals);
@@ -349,6 +354,33 @@ export function Settings() {
           >
             {saving ? 'Saving…' : 'Save goal'}
           </button>
+        </div>
+      </section>
+
+      <section className={styles.group}>
+        <h2 className={styles.groupHeading}>Month view</h2>
+        <div className={styles.card}>
+          <div className={forms.field}>
+            <label className={forms.label} htmlFor="pay-cycle-start">
+              Pay-cycle start day
+            </label>
+            <select
+              id="pay-cycle-start"
+              className={forms.select}
+              value={prefs.payCycleStartDay ?? 10}
+              onChange={(e) => void savePrefs({ ...prefs, payCycleStartDay: Number(e.target.value) })}
+            >
+              {PAY_CYCLE_START_DAYS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+            <p className={forms.hint}>
+              Your salary lands around this day. The pay-cycle view on the Month screen runs from
+              here to the day before next month&apos;s.
+            </p>
+          </div>
         </div>
       </section>
 

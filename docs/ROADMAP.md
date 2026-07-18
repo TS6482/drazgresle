@@ -114,6 +114,14 @@ Statuses: `[ ]` todo · `[~]` in progress · `[x]` done.
       (savings → neutral gray; income keeps stored colour), Settings colour picker
       removed, Category.color deprecated; area palette re-validated with the dataviz
       checker. Empty months keep the dropdown reachable. 180 tests.
+- [x] Pay-cycle view on the Month screen (user request 2026-07-18): a remembered Calendar vs
+      Pay-cycle toggle. Pay cycle = [startDay of month, startDay of next), labelled by the
+      START month, startDay configurable in Settings (default 10, since salaries land by the
+      10th). New tested pure engine `src/engine/payCycle.ts` (range + cross-file transaction
+      windowing, year-rollover safe); Month view loads both calendar files and windows the
+      set, budgets/goals stay keyed by the label month; delete/auto-classify now target each
+      row's own month file (correctness for boundary rows). prefs gains `expenseView` +
+      `payCycleStartDay`. Calendar mode byte-unchanged; Home/charts/averages stay calendar.
 - [x] Home reworked + nav icons + Settings category subpages (user requests 2026-07-18):
       Home drops Top spending/Recent for an "Averages (last 6 months)" card (per-area avg
       spend + avg income, new tested engine helper `monthlyAverages`) and gains a glanceable

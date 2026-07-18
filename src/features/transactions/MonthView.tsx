@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type { Category, Rule, RuleField, Transaction } from '../../types/data';
-import { isExpenseGroup, isSavingsGroup, summarizeMonth } from '../../engine/summarize';
+import { isExpenseGroup, isSavingsGroup, monthKey, summarizeMonth } from '../../engine/summarize';
+import { payCycleLabelRange, payCycleTransactions } from '../../engine/payCycle';
 import {
   classify,
   displayVendor,
@@ -54,6 +55,8 @@ export function MonthView() {
   const monthsLoaded = useDataStore((s) => s.monthsLoaded);
   const defaultMonthKey = useDataStore((s) => s.defaultMonthKey);
   const goalTarget = useDataStore((s) => s.goals.monthlyLeftoverHalere);
+  const prefs = useDataStore((s) => s.prefs);
+  const savePrefs = useDataStore((s) => s.savePrefs);
   const loadMonth = useDataStore((s) => s.loadMonth);
   const saveTransaction = useDataStore((s) => s.saveTransaction);
   const saveTransactions = useDataStore((s) => s.saveTransactions);
@@ -61,6 +64,10 @@ export function MonthView() {
   const saveRules = useDataStore((s) => s.saveRules);
   const rules = useDataStore((s) => s.rules);
   const saving = useDataStore((s) => s.saving);
+
+  // Month-view windowing (remembered in prefs): calendar month vs pay cycle.
+  const expenseView = prefs.expenseView ?? 'calendar';
+  const startDay = prefs.payCycleStartDay ?? 10;
 
   const [viewedMonth, setViewedMonth] = useState(defaultMonthKey);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -76,10 +83,15 @@ export function MonthView() {
   // The full transaction list is collapsed by default; unclassified stay pinned.
   const [showAll, setShowAll] = useState(false);
 
-  // Load the viewed month's transactions (the store dedupes already-loaded months).
+  // Load the viewed month's transactions (the store dedupes already-loaded
+  // months). In pay-cycle mode the window's early days come from the NEXT
+  // calendar file, so load that too.
   useEffect(() => {
     void loadMonth(viewedMonth);
-  }, [viewedMonth, loadMonth]);
+    if (expenseView === 'payCycle') {
+      void loadMonth(shiftMonth(viewedMonth, 1));
+    }
+  }, [viewedMonth, expenseView, loadMonth]);
 
   // Contribute the screen's quick actions to the floating ⋯ menu.
   const setActions = useMenuStore((s) => s.setActions);
@@ -132,8 +144,29 @@ export function MonthView() {
     setOpenAreas((prev) => ({ ...prev, [areaId]: !(prev[areaId] ?? false) }));
   }
 
-  const transactions = useMemo(() => months[viewedMonth] ?? [], [months, viewedMonth]);
-  const loaded = monthsLoaded[viewedMonth] ?? false;
+  // Window the transactions by the chosen view. Calendar → just the label
+  // month's file; pay cycle → the label month's late days + the next month's
+  // early days (see engine/payCycle). Budgets/goals stay keyed by the LABEL
+  // month, so everything downstream still gets `viewedMonth` as its monthKey.
+  const transactions = useMemo(
+    () =>
+      expenseView === 'payCycle'
+        ? payCycleTransactions(months, viewedMonth, startDay)
+        : (months[viewedMonth] ?? []),
+    [months, viewedMonth, expenseView, startDay],
+  );
+  // In pay-cycle mode both files must be loaded before an empty state is real —
+  // otherwise it flashes "no transactions" while the second file is in flight.
+  const loaded =
+    expenseView === 'payCycle'
+      ? (monthsLoaded[viewedMonth] ?? false) && (monthsLoaded[shiftMonth(viewedMonth, 1)] ?? false)
+      : (monthsLoaded[viewedMonth] ?? false);
+
+  // Caption for the active pay-cycle window, e.g. "10 Jul – 9 Aug".
+  const cycleRangeLabel = useMemo(() => {
+    const { startDate, endDate } = payCycleLabelRange(viewedMonth, startDay);
+    return `${formatDayMonth(startDate)} – ${formatDayMonth(endDate)}`;
+  }, [viewedMonth, startDay]);
 
   const byId = useMemo(
     () => new Map<string, Category>(categories.map((c) => [c.id, c])),
@@ -282,7 +315,10 @@ export function MonthView() {
   }
 
   async function remove(tx: Transaction) {
-    const ok = await deleteTransaction(viewedMonth, tx.id);
+    // Derive the file from the row's own date: in pay-cycle mode the row may
+    // live in the next calendar file, not `viewedMonth`. In calendar mode
+    // `monthKey(tx.date) === viewedMonth`, so behaviour is unchanged.
+    const ok = await deleteTransaction(monthKey(tx.date), tx.id);
     if (ok) {
       setEditingId(null);
       setPending(null);
@@ -323,7 +359,26 @@ export function MonthView() {
       setAutoResult('No rule matched — classify one by hand to teach a new rule.');
       return;
     }
-    const ok = await saveTransactions(viewedMonth, updated);
+    // A pay-cycle window can span two calendar files, so group each updated row
+    // into its own month file (one write per file). In calendar mode every row
+    // is in `viewedMonth`, so this is a single write as before.
+    const byMonth = new Map<string, Transaction[]>();
+    for (const t of updated) {
+      const mk = monthKey(t.date);
+      const list = byMonth.get(mk);
+      if (list) {
+        list.push(t);
+      } else {
+        byMonth.set(mk, [t]);
+      }
+    }
+    let ok = true;
+    for (const [mk, rows] of byMonth) {
+      if (!(await saveTransactions(mk, rows))) {
+        ok = false;
+        break;
+      }
+    }
     if (ok) {
       setAutoResult(
         `Classified ${updated.length} of ${unclassified.length} using your rules.`,
@@ -645,6 +700,34 @@ export function MonthView() {
   return (
     <section className={styles.screen}>
       <h1 className={styles.heading}>Month Overview</h1>
+
+      <div className={styles.viewToggle} role="group" aria-label="Month windowing">
+        <button
+          type="button"
+          className={`${styles.viewToggleBtn} ${expenseView === 'calendar' ? styles.viewToggleActive : ''}`}
+          aria-pressed={expenseView === 'calendar'}
+          onClick={() => {
+            if (expenseView !== 'calendar') {
+              void savePrefs({ ...prefs, expenseView: 'calendar' });
+            }
+          }}
+        >
+          Calendar
+        </button>
+        <button
+          type="button"
+          className={`${styles.viewToggleBtn} ${expenseView === 'payCycle' ? styles.viewToggleActive : ''}`}
+          aria-pressed={expenseView === 'payCycle'}
+          onClick={() => {
+            if (expenseView !== 'payCycle') {
+              void savePrefs({ ...prefs, expenseView: 'payCycle' });
+            }
+          }}
+        >
+          Pay cycle
+        </button>
+      </div>
+      {expenseView === 'payCycle' && <p className={styles.viewCaption}>{cycleRangeLabel}</p>}
 
       <Suspense fallback={<div className={styles.meterPlaceholder} />}>
         <MonthMeter summary={summary} categories={categories} monthPicker={monthPicker} />
