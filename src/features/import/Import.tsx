@@ -688,34 +688,37 @@ export function Import() {
       <section className={styles.screen}>
         <h1 className={styles.heading}>Review import</h1>
 
-        <div className={styles.summary}>
-          <div className={styles.summaryRow}>
-            <span className={styles.summaryLabel}>Period</span>
-            <span>
-              {statement.periodStart} – {statement.periodEnd}
-            </span>
-          </div>
-          <div className={styles.summaryRow}>
-            <span className={styles.summaryLabel}>Start balance</span>
-            <span>{formatKc(statement.startingBalanceHalere)}</span>
-          </div>
-          <div className={styles.summaryRow}>
-            <span className={styles.summaryLabel}>End balance</span>
-            <span>{formatKc(statement.endingBalanceHalere)}</span>
-          </div>
-          <div className={styles.summaryRow}>
-            <span className={styles.summaryLabel}>To import</span>
-            <span>
-              {items.length} new
-              {duplicateCount > 0 ? `, ${duplicateCount} already imported` : ''}
-            </span>
-          </div>
-          {unclassifiedCount > 0 && (
+        <div className={styles.group}>
+          <h2 className={styles.groupHeading}>Statement</h2>
+          <div className={styles.summary}>
             <div className={styles.summaryRow}>
-              <span className={styles.summaryLabel}>Need a category</span>
-              <span>{unclassifiedCount}</span>
+              <span className={styles.summaryLabel}>Period</span>
+              <span>
+                {statement.periodStart} – {statement.periodEnd}
+              </span>
             </div>
-          )}
+            <div className={styles.summaryRow}>
+              <span className={styles.summaryLabel}>Start balance</span>
+              <span>{formatKc(statement.startingBalanceHalere)}</span>
+            </div>
+            <div className={styles.summaryRow}>
+              <span className={styles.summaryLabel}>End balance</span>
+              <span>{formatKc(statement.endingBalanceHalere)}</span>
+            </div>
+            <div className={styles.summaryRow}>
+              <span className={styles.summaryLabel}>To import</span>
+              <span>
+                {items.length} new
+                {duplicateCount > 0 ? `, ${duplicateCount} already imported` : ''}
+              </span>
+            </div>
+            {unclassifiedCount > 0 && (
+              <div className={styles.summaryRow}>
+                <span className={styles.summaryLabel}>Need a category</span>
+                <span>{unclassifiedCount}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {items.length === 0 ? (
@@ -725,18 +728,18 @@ export function Import() {
         ) : (
           <>
             {orderedGroups.length > 0 && (
-              <>
-                <h2 className={styles.sectionHeading}>Needs a category</h2>
+              <div className={styles.group}>
+                <h2 className={styles.groupHeading}>Needs a category</h2>
                 <ul className={styles.list}>{orderedGroups.map(renderGroup)}</ul>
-              </>
+              </div>
             )}
             {classifiedRows.length > 0 && (
-              <>
-                <h2 className={styles.sectionHeading}>
+              <div className={styles.group}>
+                <h2 className={styles.groupHeading}>
                   Classified automatically ({classifiedRows.length})
                 </h2>
                 <ul className={styles.list}>{classifiedRows.map(renderClassifiedRow)}</ul>
-              </>
+              </div>
             )}
           </>
         )}
@@ -768,26 +771,29 @@ export function Import() {
     return (
       <section className={styles.screen}>
         <h1 className={styles.heading}>Import complete</h1>
-        <div className={styles.summary}>
-          <div className={styles.summaryRow}>
-            <span className={styles.summaryLabel}>Imported</span>
-            <span>{result.imported} transactions</span>
-          </div>
-          {result.duplicates > 0 && (
+        <div className={styles.group}>
+          <h2 className={styles.groupHeading}>Summary</h2>
+          <div className={styles.summary}>
             <div className={styles.summaryRow}>
-              <span className={styles.summaryLabel}>Skipped (already had)</span>
-              <span>{result.duplicates}</span>
+              <span className={styles.summaryLabel}>Imported</span>
+              <span>{result.imported} transactions</span>
             </div>
-          )}
-          {result.rulesCreated > 0 && (
+            {result.duplicates > 0 && (
+              <div className={styles.summaryRow}>
+                <span className={styles.summaryLabel}>Skipped (already had)</span>
+                <span>{result.duplicates}</span>
+              </div>
+            )}
+            {result.rulesCreated > 0 && (
+              <div className={styles.summaryRow}>
+                <span className={styles.summaryLabel}>New rules learned</span>
+                <span>{result.rulesCreated}</span>
+              </div>
+            )}
             <div className={styles.summaryRow}>
-              <span className={styles.summaryLabel}>New rules learned</span>
-              <span>{result.rulesCreated}</span>
+              <span className={styles.summaryLabel}>Months updated</span>
+              <span>{result.monthsTouched.join(', ')}</span>
             </div>
-          )}
-          <div className={styles.summaryRow}>
-            <span className={styles.summaryLabel}>Months updated</span>
-            <span>{result.monthsTouched.join(', ')}</span>
           </div>
         </div>
         <p className={styles.muted}>Saved from {fileName}.</p>

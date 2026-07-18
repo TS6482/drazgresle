@@ -1,13 +1,16 @@
+/* iOS-style Import: grouped-gray page with white inset cards, hairline row
+   separators, systemGray section headers, filled/tinted buttons. Matches the
+   language already shipped on Month / Accounts / Settings. */
 .screen {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
+/* Page title — matches Net worth / Accounts / Settings / Month. */
 .heading {
   margin: 0;
-  font-size: var(--text-lg);
-  font-weight: 700;
+  font-size: var(--text-xl);
 }
 
 .muted {
@@ -16,19 +19,37 @@
   font-size: var(--text-sm);
 }
 
-/* File picker styled as a button (the native input is visually hidden). */
+/* One section: an inset systemGray header sitting above its grouped card. */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* iOS grouped section header: small systemGray caps, inset to align with rows. */
+.groupHeading {
+  margin: 0;
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+}
+
+/* File picker styled as a filled iOS button (the native input is visually
+   hidden). Stretches to full width as a flex child of the screen. */
 .picker {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 48px;
-  padding: var(--space-3);
   border-radius: var(--radius);
   background: var(--color-primary);
   color: var(--color-on-primary);
-  border: 1px solid var(--color-primary);
-  cursor: pointer;
+  font-size: var(--text-base);
   font-weight: 600;
+  cursor: pointer;
 }
 
 .fileInput {
@@ -46,6 +67,7 @@
   pointer-events: none;
 }
 
+/* iOS inset warning note (parse failures, save errors). */
 .error {
   padding: var(--space-3);
   border-radius: var(--radius);
@@ -54,15 +76,13 @@
   font-size: var(--text-sm);
 }
 
-/* Statement summary block. */
+/* Statement summary — an inset grouped card; rows split by hairlines. */
 .summary {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
   border-radius: var(--radius);
+  overflow: hidden;
 }
 
 .summaryRow {
@@ -70,7 +90,12 @@
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   font-variant-numeric: tabular-nums;
+}
+
+.summaryRow + .summaryRow {
+  border-top: var(--hairline) solid var(--color-border);
 }
 
 .summaryLabel {
@@ -78,15 +103,7 @@
   font-size: var(--text-sm);
 }
 
-.sectionHeading {
-  margin: var(--space-2) 0 0;
-  font-size: var(--text-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted);
-}
-
-/* Review list. */
+/* Review list — one clean iOS card per group, separated by gaps (no borders). */
 .list {
   list-style: none;
   margin: 0;
@@ -100,9 +117,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-3);
+  padding: var(--space-4);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
   border-radius: var(--radius);
 }
 
@@ -133,15 +149,24 @@
 .rowMeta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-2);
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
+/* Small systemGray pill (bank type) — the shared iOS .chip look. */
 .type {
+  font-size: var(--text-sm);
   padding: 1px var(--space-2);
   border-radius: 999px;
   background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.date {
+  white-space: nowrap;
 }
 
 .desc {
@@ -158,13 +183,14 @@
   color: var(--color-text-muted);
 }
 
-/* "Matched by your new rule" chip on a group covered by live propagation. */
+/* "Matched by your new rule" — an iOS tinted-indigo chip. */
 .viaRule {
+  font-size: var(--text-sm);
   padding: 1px var(--space-2);
   border-radius: 999px;
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  font-size: var(--text-sm);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  white-space: nowrap;
 }
 
 /* Learn-a-rule block: checkbox + editable matching-text input. */
@@ -207,8 +233,8 @@
   font-size: var(--text-base);
   color: var(--color-text);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border: var(--hairline) solid var(--color-border);
+  border-radius: var(--radius-sm);
 }
 
 .patternInput[aria-invalid='true'] {
@@ -225,28 +251,30 @@
   color: var(--color-text-muted);
 }
 
-/* Actions. */
+/* Actions — filled primary + tinted secondary, iOS 48px, no borders. */
 .actions {
   display: flex;
   gap: var(--space-3);
-  margin-top: var(--space-2);
+}
+
+.actions .primary,
+.actions .secondary {
+  flex: 1;
 }
 
 .primary,
 .secondary {
-  min-height: 44px;
-  padding: var(--space-2) var(--space-4);
+  min-height: 48px;
   border-radius: var(--radius);
+  border: none;
   font-size: var(--text-base);
+  font-weight: 600;
   cursor: pointer;
-  border: 1px solid transparent;
 }
 
 .primary {
-  flex: 1;
   background: var(--color-primary);
   color: var(--color-on-primary);
-  border-color: var(--color-primary);
 }
 
 .primary:disabled {
@@ -255,7 +283,11 @@
 }
 
 .secondary {
-  background: var(--color-surface);
-  color: var(--color-text);
-  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+
+.secondary:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
