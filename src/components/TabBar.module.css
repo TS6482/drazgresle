@@ -32,8 +32,10 @@
 }
 
 .icon {
-  font-size: 1.5rem;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
 }
 
 /* iOS tab labels are small (~10pt). */
