@@ -66,19 +66,19 @@
 
 .legend {
   list-style: none;
-  margin: var(--space-2) 0 0;
+  margin: var(--space-1) 0 0;
   padding: 0 var(--space-2);
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2) var(--space-3);
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text);
 }
 
 .legendItem {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
+  gap: var(--space-2);
 }
 
 .legendSwatch {
@@ -98,9 +98,10 @@
 .tooltip {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  font-size: var(--text-sm);
   min-width: 160px;
 }
 
@@ -133,26 +134,21 @@
 .tooltipRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 .tooltipValue {
+  margin-left: auto;
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
-}
-
-.tooltipKeyWrap {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
+  color: var(--color-text);
 }
 
 .tooltipStroke {
   width: 12px;
-  height: 3px;
-  border-radius: 2px;
+  height: 2px;
+  border-radius: 999px;
   display: inline-block;
+  flex-shrink: 0;
 }
 
 .tooltipName {

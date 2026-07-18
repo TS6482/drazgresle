@@ -71,15 +71,13 @@ function SnapshotTooltip({
       <ul className={styles.tooltipList}>
         {rows.map((r) => (
           <li key={r.key} className={styles.tooltipRow}>
+            <span
+              className={styles.tooltipStroke}
+              style={{ background: `var(${r.cssVar})` }}
+              aria-hidden="true"
+            />
+            <span className={styles.tooltipName}>{r.name}</span>
             <span className={styles.tooltipValue}>{formatKc(r.value)}</span>
-            <span className={styles.tooltipKeyWrap}>
-              <span
-                className={styles.tooltipStroke}
-                style={{ background: `var(${r.cssVar})` }}
-                aria-hidden="true"
-              />
-              <span className={styles.tooltipName}>{r.name}</span>
-            </span>
           </li>
         ))}
       </ul>
