@@ -1,0 +1,45 @@
+/* Glanceable net-worth sparkline card — one tappable inset grouped card. The
+   line colour is systemIndigo (the app accent), which clears text contrast on
+   both the white and dark card surfaces; the value is shown as text, never
+   carried by colour alone. */
+.card {
+  --home-net-line: var(--color-primary);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: none;
+  border-radius: var(--radius);
+  text-align: left;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.label {
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Compact sparkline band; ResponsiveContainer fills this height. */
+.plot {
+  display: block;
+  width: 100%;
+  height: 120px;
+}

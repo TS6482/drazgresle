@@ -20,6 +20,14 @@
   margin-bottom: var(--space-3);
 }
 
+/* Reserve the net-worth sparkline card's height while its lazy chunk loads
+   (padding + label row + gap + 120px plot), so the page doesn't jump. */
+.netChartPlaceholder {
+  min-height: 172px;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+}
+
 /* This-month card — iOS inset grouped card (no border; the grouped-gray page
    background provides the separation). */
 .card {
@@ -93,7 +101,7 @@
   background: var(--color-danger);
 }
 
-/* Small labelled blocks (top spending, recent). */
+/* Small labelled blocks (e.g. the 6-month averages). */
 .block {
   display: flex;
   flex-direction: column;
@@ -136,30 +144,20 @@
   border-top: var(--hairline) solid var(--color-border);
 }
 
-.recentWho {
+/* Averages row: the area icon tile + name on the left (Month view rows use the
+   same 28px tile), the average amount right-aligned. */
+.avgWho {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.miniRight {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  white-space: nowrap;
-}
-
-.recentDate {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
 .miniAmount {
   font-variant-numeric: tabular-nums;
-}
-
-.income {
-  color: var(--color-primary);
 }
 
 .muted {

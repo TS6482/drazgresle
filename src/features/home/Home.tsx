@@ -1,23 +1,27 @@
 import { lazy, Suspense, useEffect, useMemo } from 'react';
-import type { Category } from '../../types/data';
 import { computeNetWorth } from '../../engine/networth';
 import { cashFlowForYear } from '../../engine/cashflow';
 import { isExpenseGroup, savingsRate, summarizeMonth } from '../../engine/summarize';
-import { displayVendor } from '../../engine/classify';
+import { monthlyAverages } from '../../engine/averages';
+import { areaIcon } from '../../engine/areas';
 import { formatKc } from '../../engine/money';
 import { formatPercent } from '../../engine/percent';
+import { CategoryIcon } from '../shared/icons/CategoryIcon';
 import { GoalReadout } from '../shared/GoalReadout';
 import { useDataStore } from '../../store/data';
 import { useMenuStore } from '../../store/menu';
 import { navigate } from '../../router/useHashRoute';
-import { daysBetween, formatDayMonth, formatMonthLabel, todayIso } from '../../utils/dates';
+import { daysBetween, formatMonthLabel, shiftMonth, todayIso } from '../../utils/dates';
 import styles from './Home.module.css';
 
-// Recharts is heavy; load the cash-flow chart on demand so it stays out of the
-// entry chunk (see docs/ARCHITECTURE.md — bundle split). Named memoized export,
-// re-mapped to the default lazy() expects.
+// Recharts is heavy; load the charts on demand so they stay out of the entry
+// chunk (see docs/ARCHITECTURE.md — bundle split). CashFlowChart keeps a named
+// memoized export, re-mapped to the default lazy() expects.
 const CashFlowChart = lazy(() =>
   import('../transactions/CashFlowChart').then((m) => ({ default: m.CashFlowChart })),
+);
+const HomeNetWorthChart = lazy(() =>
+  import('./HomeNetWorthChart').then((m) => ({ default: m.HomeNetWorthChart })),
 );
 
 /** Quarterly cadence: nudge once the last snapshot is older than this. */
@@ -51,11 +55,20 @@ export function Home() {
     return list;
   }, [defaultMonthKey]);
 
+  // The trailing six months ending at the default month — the "typical month"
+  // averages window. Loaded explicitly because `yearMonths` only spans Jan..
+  // default of one year, which does not cover six months when the default is
+  // early in the year (e.g. February → just Jan, Feb).
+  const trailing6 = useMemo(
+    () => [0, 1, 2, 3, 4, 5].map((back) => shiftMonth(defaultMonthKey, -back)),
+    [defaultMonthKey],
+  );
+
   useEffect(() => {
-    for (const mk of yearMonths) {
+    for (const mk of new Set([...yearMonths, ...trailing6])) {
       void loadMonth(mk);
     }
-  }, [yearMonths, loadMonth]);
+  }, [yearMonths, trailing6, loadMonth]);
 
   // Contribute the screen's quick actions to the floating ⋯ menu.
   const setActions = useMenuStore((s) => s.setActions);
@@ -71,11 +84,6 @@ export function Home() {
   const cashFlow = useMemo(
     () => cashFlowForYear(months, categories, budgets, defaultMonthKey),
     [months, categories, budgets, defaultMonthKey],
-  );
-
-  const byId = useMemo(
-    () => new Map<string, Category>(categories.map((c) => [c.id, c])),
-    [categories],
   );
 
   const summary = useMemo(
@@ -98,18 +106,11 @@ export function Home() {
     return any ? total : null;
   }, [summary]);
 
-  // Expense groups only: an income category must never appear in "top
-  // spending", even in a month with no spending at all.
-  const topCategories = summary.byCategory
-    .filter((c) => isExpenseGroup(c.group) && c.spendHalere > 0)
-    .slice(0, 3);
-
-  const recent = useMemo(
-    () =>
-      [...transactions]
-        .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
-        .slice(0, 5),
-    [transactions],
+  // Trailing-6-month averages: one row per spending area + income. Empty months
+  // in the window are skipped by the engine (divisor excludes them).
+  const averages = useMemo(
+    () => monthlyAverages(months, categories, budgets, trailing6),
+    [months, categories, budgets, trailing6],
   );
 
   const latest = snapshots.length > 0 ? snapshots[snapshots.length - 1] : undefined;
@@ -119,23 +120,6 @@ export function Home() {
   );
   const daysSinceLast = latest ? daysBetween(latest.date, todayIso()) : null;
   const needsSnapshot = daysSinceLast === null || daysSinceLast > SNAPSHOT_STALE_DAYS;
-
-  function categoryName(categoryId: string | null): string {
-    if (categoryId === null) {
-      return 'Uncategorized';
-    }
-    return byId.get(categoryId)?.name ?? categoryId;
-  }
-
-  /** Recent rows lead with the vendor (merchant for card rows); cash/manual
-   *  entries keep their typed note/counterparty (new cash entries store it in
-   *  `note`). */
-  function recentLine(tx: (typeof recent)[number]): string {
-    if (tx.source === 'cash' || tx.source === 'manual') {
-      return tx.counterparty || tx.description || tx.note || categoryName(tx.categoryId);
-    }
-    return displayVendor(tx);
-  }
 
   const budgetFraction =
     totalBudget && totalBudget > 0 ? Math.min(1, summary.spendHalere / totalBudget) : 0;
@@ -200,16 +184,33 @@ export function Home() {
         <GoalReadout leftoverHalere={summary.leftoverHalere} targetHalere={goalTarget} />
       )}
 
-      {topCategories.length > 0 && (
+      {snapshots.length >= 2 && (
+        <Suspense fallback={<div className={styles.netChartPlaceholder} />}>
+          <HomeNetWorthChart accounts={accounts} snapshots={snapshots} />
+        </Suspense>
+      )}
+
+      {averages.monthsUsed > 0 && (
         <div className={styles.block}>
-          <span className={styles.blockHeading}>Top spending</span>
+          <span className={styles.blockHeading}>Averages · last 6 months</span>
           <ul className={styles.miniList}>
-            {topCategories.map((c) => (
-              <li key={c.categoryId} className={styles.miniRow}>
-                <span>{categoryName(c.categoryId)}</span>
-                <span className={styles.miniAmount}>{formatKc(c.spendHalere)}</span>
+            {averages.byArea.map((area) => (
+              <li key={area.areaId} className={styles.miniRow}>
+                <span className={styles.avgWho}>
+                  <CategoryIcon
+                    iconId={areaIcon(area.areaId)}
+                    color={`area-${area.areaId}`}
+                    size={28}
+                  />
+                  {area.name}
+                </span>
+                <span className={styles.miniAmount}>{formatKc(area.avgHalere)}</span>
               </li>
             ))}
+            <li className={styles.miniRow}>
+              <span className={styles.avgWho}>Income</span>
+              <span className={styles.miniAmount}>{formatKc(averages.avgIncomeHalere)}</span>
+            </li>
           </ul>
         </div>
       )}
@@ -224,39 +225,22 @@ export function Home() {
         </button>
       )}
 
-      {recent.length > 0 && (
-        <div className={styles.block}>
-          <span className={styles.blockHeading}>Recent</span>
-          <ul className={styles.miniList}>
-            {recent.map((tx) => (
-              <li key={tx.id} className={styles.miniRow}>
-                <span className={styles.recentWho}>{recentLine(tx)}</span>
-                <span className={styles.miniRight}>
-                  <span className={styles.recentDate}>{formatDayMonth(tx.date)}</span>
-                  <span
-                    className={`${styles.miniAmount} ${tx.amountHalere > 0 ? styles.income : ''}`}
-                  >
-                    {formatKc(tx.amountHalere)}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       {!loading && transactions.length === 0 && (
         <p className={styles.muted}>
           No spending recorded this month yet. Add a cash expense to get started.
         </p>
       )}
 
-      <button type="button" className={styles.netLine} onClick={() => navigate('/networth')}>
-        <span className={styles.netLabel}>Net worth</span>
-        <span className={styles.netValue}>
-          {net === null ? (loading ? 'Loading…' : 'No snapshots yet') : formatKc(net)}
-        </span>
-      </button>
+      {/* The sparkline above already shows Net worth + value when there are ≥2
+          snapshots; this compact figure is the fallback for 0–1 snapshots. */}
+      {snapshots.length < 2 && (
+        <button type="button" className={styles.netLine} onClick={() => navigate('/networth')}>
+          <span className={styles.netLabel}>Net worth</span>
+          <span className={styles.netValue}>
+            {net === null ? (loading ? 'Loading…' : 'No snapshots yet') : formatKc(net)}
+          </span>
+        </button>
+      )}
 
       {needsSnapshot && !loading && (
         <button type="button" className={styles.nudge} onClick={() => navigate('/networth')}>
